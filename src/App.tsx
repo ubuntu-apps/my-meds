@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Bell, X } from 'lucide-react'
+import { Bell, RefreshCw, X } from 'lucide-react'
 import './App.css'
 import { BottomNav } from './components/BottomNav'
 import type { Tab } from './components/BottomNav'
@@ -22,6 +22,8 @@ export default function App() {
   const [now, setNow] = useState(() => new Date())
   const [form, setForm] = useState<FormState>(null)
   const [bannerDismissed, setBannerDismissed] = useState(false)
+  const [updateReady, setUpdateReady] = useState(false)
+  const [applyUpdate, setApplyUpdate] = useState<((reloadPage?: boolean) => Promise<void>) | null>(null)
 
   const meds = useMeds()
   const { permission, requestPermission, snooze } = useReminders(meds.data)
@@ -30,6 +32,21 @@ export default function App() {
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 30_000)
     return () => window.clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    const onUpdateAvailable = (
+      event: Event & { detail?: { updateSW?: (reloadPage?: boolean) => Promise<void> } },
+    ) => {
+      if (!event.detail?.updateSW) return
+      setApplyUpdate(() => event.detail!.updateSW!)
+      setUpdateReady(true)
+    }
+
+    window.addEventListener('my-meds:update-available', onUpdateAvailable as EventListener)
+    return () => {
+      window.removeEventListener('my-meds:update-available', onUpdateAvailable as EventListener)
+    }
   }, [])
 
   const handleSave = (input: MedicationInput) => {
@@ -76,6 +93,24 @@ export default function App() {
               className="icon-btn"
               onClick={() => setBannerDismissed(true)}
               aria-label="Dismiss"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        )}
+
+        {updateReady && applyUpdate && (
+          <div className="banner">
+            <RefreshCw size={18} aria-hidden />
+            <div className="banner__text">A new version is ready. Update now to get the latest fixes.</div>
+            <button type="button" className="btn btn--primary btn--sm" onClick={() => void applyUpdate(true)}>
+              Update
+            </button>
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={() => setUpdateReady(false)}
+              aria-label="Dismiss update prompt"
             >
               <X size={18} />
             </button>

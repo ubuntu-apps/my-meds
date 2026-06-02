@@ -5,8 +5,15 @@ import App from './App.tsx'
 import { registerSW } from 'virtual:pwa-register'
 import { APP_VERSION } from './version'
 
-registerSW({
+const updateSW = registerSW({
   immediate: true,
+  onNeedRefresh() {
+    window.dispatchEvent(
+      new CustomEvent('my-meds:update-available', {
+        detail: { updateSW },
+      }),
+    )
+  },
 })
 
 if ('serviceWorker' in navigator) {
