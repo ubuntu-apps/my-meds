@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Check, Clock, RotateCcw, SkipForward, Pill, Plus } from 'lucide-react'
+import { Check, Clock, RotateCcw, SkipForward, Pill, Plus, CheckCheck, AlarmClock } from 'lucide-react'
 import type { AppData, DoseRecord, DoseSlot, Medication } from './types'
 import { buildDaySlots, dateKey, formatTime, sortMedications } from './schedule'
 
@@ -9,9 +9,16 @@ interface TodayScreenProps {
   onTake: (slot: DoseSlot) => void
   onSkip: (slot: DoseSlot) => void
   onUndo: (slot: DoseSlot) => void
+  onTakeAll: (slots: DoseSlot[]) => void
+  onSnooze: (slot: DoseSlot) => void
   onLogAsNeeded: (med: Medication) => void
   onUndoAsNeeded: (record: DoseRecord) => void
   onGoToMeds: () => void
+}
+
+/** A dose slot is "pending" when it still needs the user's attention today. */
+function isPending(status: DoseSlot['status']): boolean {
+  return status === 'due' || status === 'upcoming' || status === 'missed'
 }
 
 const STATUS_LABEL: Record<DoseSlot['status'], string> = {
@@ -28,11 +35,14 @@ export function TodayScreen({
   onTake,
   onSkip,
   onUndo,
+  onTakeAll,
+  onSnooze,
   onLogAsNeeded,
   onUndoAsNeeded,
   onGoToMeds,
 }: TodayScreenProps) {
   const slots = useMemo(() => buildDaySlots(data, now, now), [data, now])
+  const pendingSlots = useMemo(() => slots.filter((s) => isPending(s.status)), [slots])
 
   const asNeededMeds = useMemo(
     () => sortMedications(data.medications.filter((m) => m.active && m.scheduleKind === 'asNeeded')),
@@ -74,6 +84,16 @@ export function TodayScreen({
           </div>
         )}
       </header>
+
+      {pendingSlots.length > 0 && (
+        <button
+          type="button"
+          className="btn btn--ghost mark-all"
+          onClick={() => onTakeAll(pendingSlots)}
+        >
+          <CheckCheck size={18} /> Mark all taken ({pendingSlots.length})
+        </button>
+      )}
 
       {slots.length === 0 && asNeededMeds.length === 0 ? (
         <div className="empty">
@@ -125,6 +145,11 @@ export function TodayScreen({
                     <button type="button" className="btn btn--ghost btn--sm" onClick={() => onSkip(slot)}>
                       <SkipForward size={16} /> Skip
                     </button>
+                    {(slot.status === 'due' || slot.status === 'missed') && (
+                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => onSnooze(slot)}>
+                        <AlarmClock size={16} /> Snooze
+                      </button>
+                    )}
                   </>
                 )}
               </div>

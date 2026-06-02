@@ -22,7 +22,7 @@ export default function App() {
   const [bannerDismissed, setBannerDismissed] = useState(false)
 
   const meds = useMeds()
-  const { permission, requestPermission } = useReminders(meds.data)
+  const { permission, requestPermission, snooze } = useReminders(meds.data)
 
   // Re-evaluate dose statuses as time passes.
   useEffect(() => {
@@ -85,6 +85,12 @@ export default function App() {
             onTake={(slot) => meds.recordDose(slot.medication.id, slot.date, slot.time, 'taken')}
             onSkip={(slot) => meds.recordDose(slot.medication.id, slot.date, slot.time, 'skipped')}
             onUndo={(slot) => meds.clearDose(slot.medication.id, slot.date, slot.time)}
+            onTakeAll={(slots) =>
+              slots.forEach((slot) =>
+                meds.recordDose(slot.medication.id, slot.date, slot.time, 'taken'),
+              )
+            }
+            onSnooze={(slot) => snooze(slot)}
             onLogAsNeeded={(med) => meds.logAsNeeded(med.id)}
             onUndoAsNeeded={(record) => meds.clearDose(record.medId, record.date, record.time)}
             onGoToMeds={() => {

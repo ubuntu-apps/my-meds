@@ -172,6 +172,12 @@
   color: var(--danger);
 }
 
+.mark-all {
+  width: 100%;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
 /* ---------- As-needed section ---------- */
 .as-needed {
   margin-top: 26px;
