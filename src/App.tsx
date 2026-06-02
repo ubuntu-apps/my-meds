@@ -91,6 +91,7 @@ export default function App() {
               )
             }
             onSnooze={(slot) => snooze(slot)}
+            canSnooze={permission === 'granted'}
             onLogAsNeeded={(med) => meds.logAsNeeded(med.id)}
             onUndoAsNeeded={(record) => meds.clearDose(record.medId, record.date, record.time)}
             onGoToMeds={() => {

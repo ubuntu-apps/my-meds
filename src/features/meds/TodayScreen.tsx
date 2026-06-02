@@ -14,6 +14,8 @@ interface TodayScreenProps {
   onLogAsNeeded: (med: Medication) => void
   onUndoAsNeeded: (record: DoseRecord) => void
   onGoToMeds: () => void
+  /** Whether reminders are active, so a snooze will actually re-fire. */
+  canSnooze: boolean
 }
 
 /** A dose slot is "pending" when it still needs the user's attention today. */
@@ -40,6 +42,7 @@ export function TodayScreen({
   onLogAsNeeded,
   onUndoAsNeeded,
   onGoToMeds,
+  canSnooze,
 }: TodayScreenProps) {
   const slots = useMemo(() => buildDaySlots(data, now, now), [data, now])
   const pendingSlots = useMemo(() => slots.filter((s) => isPending(s.status)), [slots])
@@ -145,7 +148,7 @@ export function TodayScreen({
                     <button type="button" className="btn btn--ghost btn--sm" onClick={() => onSkip(slot)}>
                       <SkipForward size={16} /> Skip
                     </button>
-                    {(slot.status === 'due' || slot.status === 'missed') && (
+                    {canSnooze && (slot.status === 'due' || slot.status === 'missed') && (
                       <button type="button" className="btn btn--ghost btn--sm" onClick={() => onSnooze(slot)}>
                         <AlarmClock size={16} /> Snooze
                       </button>

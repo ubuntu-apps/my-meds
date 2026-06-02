@@ -11,12 +11,19 @@ Works offline and installs to the home screen on both **iPhone (iOS/Safari)** an
 ## Features
 
 - **Describe medications** — name, dose (e.g. "1 tablet, 500 mg"), and free-text notes.
-- **Flexible schedule** — set one or more times of day per medication.
+- **Flexible schedules** — choose how each medication repeats:
+  - **Set times** — one or more fixed times of day.
+  - **Every X hours** — an interval from a chosen start time (e.g. every 8 hours).
+  - **As needed** — no schedule or reminders; log doses ad hoc.
+- **Day-of-week** — limit a medication to specific weekdays, or keep it daily.
 - **Confirm a dose** — tap *Take* to record it; the time you took it is saved.
 - **Skip a dose** — tap *Skip*; the skip is remembered too.
+- **Mark all taken** — record every pending dose for today in one tap.
 - **Undo** — a recorded dose can be reverted.
 - **Reminders** — a notification fires **15 minutes before** each scheduled dose.
-- **History** — every taken/skipped dose is logged by day.
+- **Snooze** — postpone a due reminder by 15 minutes.
+- **History** — every taken/skipped dose is logged by day, with adherence stats
+  and a per-medication filter.
 - **Local & private** — all data is stored on your device (localStorage); nothing
   is sent to a server.
 
@@ -45,7 +52,9 @@ npm run preview
 ## Notifications
 
 Tap **Enable** on the reminder banner to grant notification permission. Reminders
-are scheduled while the app is open or running in the background.
+are scheduled while the app is open or running in the background. A due dose can be
+**snoozed** for 15 minutes from the Today screen, which re-fires the reminder later
+(unless you take or skip it first).
 
 > **iOS note:** Safari only delivers web notifications when the app has been
 > **added to the Home Screen** (Share → *Add to Home Screen*) and opened from
