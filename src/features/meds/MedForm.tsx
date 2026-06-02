@@ -1,8 +1,13 @@
 import { useState } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
-import type { Medication } from './types'
+import type { Medication, ScheduleKind } from './types'
 import type { MedicationInput } from './useMeds'
-import { isDaily, WEEKDAYS } from './schedule'
+import {
+  DEFAULT_INTERVAL_HOURS,
+  DEFAULT_INTERVAL_START,
+  isDaily,
+  WEEKDAYS,
+} from './schedule'
 
 interface MedFormProps {
   initial?: Medication
@@ -11,11 +16,24 @@ interface MedFormProps {
   onDelete?: () => void
 }
 
+const SCHEDULE_OPTIONS: { value: ScheduleKind; label: string }[] = [
+  { value: 'fixed', label: 'Set times' },
+  { value: 'interval', label: 'Every X hours' },
+  { value: 'asNeeded', label: 'As needed' },
+]
+
 export function MedForm({ initial, onSave, onCancel, onDelete }: MedFormProps) {
   const [name, setName] = useState(initial?.name ?? '')
   const [dosage, setDosage] = useState(initial?.dosage ?? '')
   const [notes, setNotes] = useState(initial?.notes ?? '')
+  const [scheduleKind, setScheduleKind] = useState<ScheduleKind>(initial?.scheduleKind ?? 'fixed')
   const [times, setTimes] = useState<string[]>(initial?.times.length ? initial.times : ['08:00'])
+  const [intervalHours, setIntervalHours] = useState<number>(
+    initial?.intervalHours ?? DEFAULT_INTERVAL_HOURS,
+  )
+  const [intervalStart, setIntervalStart] = useState<string>(
+    initial?.intervalStart ?? DEFAULT_INTERVAL_START,
+  )
   const [daily, setDaily] = useState(isDaily(initial?.days))
   const [selectedDays, setSelectedDays] = useState<number[]>(
     initial && !isDaily(initial.days) ? initial.days : [],
@@ -42,16 +60,40 @@ export function MedForm({ initial, onSave, onCancel, onDelete }: MedFormProps) {
       setError('Please enter a medication name.')
       return
     }
+
     const cleanTimes = times.filter(Boolean)
-    if (cleanTimes.length === 0) {
-      setError('Add at least one time of day.')
-      return
+    const days = daily ? [] : selectedDays
+
+    if (scheduleKind === 'fixed') {
+      if (cleanTimes.length === 0) {
+        setError('Add at least one time of day.')
+        return
+      }
+      if (!daily && selectedDays.length === 0) {
+        setError('Pick at least one day, or choose Daily.')
+        return
+      }
+    } else if (scheduleKind === 'interval') {
+      if (!Number.isFinite(intervalHours) || intervalHours < 1 || intervalHours > 24) {
+        setError('Enter an interval between 1 and 24 hours.')
+        return
+      }
+      if (!daily && selectedDays.length === 0) {
+        setError('Pick at least one day, or choose Daily.')
+        return
+      }
     }
-    if (!daily && selectedDays.length === 0) {
-      setError('Pick at least one day, or choose Daily.')
-      return
-    }
-    onSave({ name, dosage, notes, times: cleanTimes, days: daily ? [] : selectedDays })
+
+    onSave({
+      name,
+      dosage,
+      notes,
+      scheduleKind,
+      times: cleanTimes,
+      days,
+      intervalHours,
+      intervalStart,
+    })
   }
 
   return (
@@ -97,59 +139,114 @@ export function MedForm({ initial, onSave, onCancel, onDelete }: MedFormProps) {
           </label>
 
           <div className="field">
-            <span>Times of day</span>
-            <div className="times">
-              {times.map((time, i) => (
-                <div className="times__row" key={i}>
-                  <input
-                    type="time"
-                    value={time}
-                    onChange={(e) => updateTime(i, e.target.value)}
-                    aria-label={`Time ${i + 1}`}
-                  />
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    onClick={() => removeTime(i)}
-                    disabled={times.length <= 1}
-                    aria-label="Remove time"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
+            <span>Schedule</span>
+            <div className="segmented" role="group" aria-label="Schedule type">
+              {SCHEDULE_OPTIONS.map((opt) => (
+                <button
+                  type="button"
+                  key={opt.value}
+                  className={`segmented__btn${scheduleKind === opt.value ? ' is-active' : ''}`}
+                  aria-pressed={scheduleKind === opt.value}
+                  onClick={() => setScheduleKind(opt.value)}
+                >
+                  {opt.label}
+                </button>
               ))}
-              <button type="button" className="btn btn--ghost" onClick={addTime}>
-                <Plus size={18} /> Add another time
-              </button>
             </div>
           </div>
 
-          <div className="field">
-            <span>Days</span>
-            <label className="checkbox-row">
-              <input
-                type="checkbox"
-                checked={daily}
-                onChange={(e) => setDaily(e.target.checked)}
-              />
-              <span>Daily</span>
-            </label>
-            {!daily && (
-              <div className="weekdays">
-                {WEEKDAYS.map((d) => (
-                  <button
-                    type="button"
-                    key={d.value}
-                    className={`day-chip${selectedDays.includes(d.value) ? ' is-selected' : ''}`}
-                    aria-pressed={selectedDays.includes(d.value)}
-                    onClick={() => toggleDay(d.value)}
-                  >
-                    {d.short}
-                  </button>
+          {scheduleKind === 'fixed' && (
+            <div className="field">
+              <span>Times of day</span>
+              <div className="times">
+                {times.map((time, i) => (
+                  <div className="times__row" key={i}>
+                    <input
+                      type="time"
+                      value={time}
+                      onChange={(e) => updateTime(i, e.target.value)}
+                      aria-label={`Time ${i + 1}`}
+                    />
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      onClick={() => removeTime(i)}
+                      disabled={times.length <= 1}
+                      aria-label="Remove time"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 ))}
+                <button type="button" className="btn btn--ghost" onClick={addTime}>
+                  <Plus size={18} /> Add another time
+                </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {scheduleKind === 'interval' && (
+            <div className="field-row">
+              <label className="field">
+                <span>Every</span>
+                <div className="interval-input">
+                  <input
+                    type="number"
+                    min={1}
+                    max={24}
+                    value={intervalHours}
+                    onChange={(e) => setIntervalHours(Number(e.target.value))}
+                    aria-label="Interval in hours"
+                  />
+                  <span className="interval-input__unit">hours</span>
+                </div>
+              </label>
+              <label className="field">
+                <span>Starting at</span>
+                <input
+                  type="time"
+                  value={intervalStart}
+                  onChange={(e) => setIntervalStart(e.target.value)}
+                  aria-label="First dose time"
+                />
+              </label>
+            </div>
+          )}
+
+          {scheduleKind === 'asNeeded' && (
+            <p className="form__hint">
+              No fixed schedule or reminders. Log a dose from the Today screen whenever you take it.
+            </p>
+          )}
+
+          {scheduleKind !== 'asNeeded' && (
+            <div className="field">
+              <span>Days</span>
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={daily}
+                  onChange={(e) => setDaily(e.target.checked)}
+                />
+                <span>Daily</span>
+              </label>
+              {!daily && (
+                <div className="weekdays">
+                  {WEEKDAYS.map((d) => (
+                    <button
+                      type="button"
+                      key={d.value}
+                      className={`day-chip${selectedDays.includes(d.value) ? ' is-selected' : ''}`}
+                      aria-pressed={selectedDays.includes(d.value)}
+                      onClick={() => toggleDay(d.value)}
+                    >
+                      {d.short}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {error && <p className="form__error">{error}</p>}
 

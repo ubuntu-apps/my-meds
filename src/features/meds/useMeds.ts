@@ -1,14 +1,40 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { AppData, DoseStatus, Medication } from './types'
+import type { AppData, DoseStatus, Medication, ScheduleKind } from './types'
 import { createId, loadData, saveData } from './storage'
-import { normalizeDays, normalizeTimes, slotId } from './schedule'
+import { dateKey, normalizeDays, normalizeIntervalHours, normalizeTimes, slotId } from './schedule'
 
 export interface MedicationInput {
   name: string
   dosage: string
   notes: string
+  scheduleKind: ScheduleKind
   times: string[]
   days: number[]
+  intervalHours?: number
+  intervalStart?: string
+}
+
+function buildSchedule(input: MedicationInput): Pick<
+  Medication,
+  'scheduleKind' | 'times' | 'days' | 'intervalHours' | 'intervalStart'
+> {
+  if (input.scheduleKind === 'asNeeded') {
+    return { scheduleKind: 'asNeeded', times: [], days: [] }
+  }
+  if (input.scheduleKind === 'interval') {
+    return {
+      scheduleKind: 'interval',
+      times: [],
+      days: normalizeDays(input.days),
+      intervalHours: normalizeIntervalHours(input.intervalHours),
+      intervalStart: input.intervalStart || '08:00',
+    }
+  }
+  return {
+    scheduleKind: 'fixed',
+    times: normalizeTimes(input.times),
+    days: normalizeDays(input.days),
+  }
 }
 
 export function useMeds() {
@@ -33,8 +59,7 @@ export function useMeds() {
       name: input.name.trim(),
       dosage: input.dosage.trim(),
       notes: input.notes.trim(),
-      times: normalizeTimes(input.times),
-      days: normalizeDays(input.days),
+      ...buildSchedule(input),
       active: true,
       createdAt: Date.now(),
     }
@@ -52,8 +77,9 @@ export function useMeds() {
               name: input.name.trim(),
               dosage: input.dosage.trim(),
               notes: input.notes.trim(),
-              times: normalizeTimes(input.times),
-              days: normalizeDays(input.days),
+              intervalHours: undefined,
+              intervalStart: undefined,
+              ...buildSchedule(input),
             }
           : m,
       ),
@@ -104,6 +130,14 @@ export function useMeds() {
     })
   }, [])
 
+  // Record an unscheduled ("as needed") dose at the current local time.
+  const logAsNeeded = useCallback((medId: string) => {
+    const now = new Date()
+    const date = dateKey(now)
+    const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    recordDose(medId, date, time, 'taken')
+  }, [recordDose])
+
   return {
     data,
     addMedication,
@@ -112,6 +146,7 @@ export function useMeds() {
     deleteMedication,
     recordDose,
     clearDose,
+    logAsNeeded,
   }
 }
 

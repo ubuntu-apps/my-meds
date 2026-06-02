@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
-import { Check, Clock, RotateCcw, SkipForward, Pill } from 'lucide-react'
-import type { AppData, DoseSlot } from './types'
-import { buildDaySlots, formatTime } from './schedule'
+import { Check, Clock, RotateCcw, SkipForward, Pill, Plus } from 'lucide-react'
+import type { AppData, DoseRecord, DoseSlot, Medication } from './types'
+import { buildDaySlots, dateKey, formatTime, sortMedications } from './schedule'
 
 interface TodayScreenProps {
   data: AppData
@@ -9,6 +9,8 @@ interface TodayScreenProps {
   onTake: (slot: DoseSlot) => void
   onSkip: (slot: DoseSlot) => void
   onUndo: (slot: DoseSlot) => void
+  onLogAsNeeded: (med: Medication) => void
+  onUndoAsNeeded: (record: DoseRecord) => void
   onGoToMeds: () => void
 }
 
@@ -20,8 +22,35 @@ const STATUS_LABEL: Record<DoseSlot['status'], string> = {
   missed: 'Missed',
 }
 
-export function TodayScreen({ data, now, onTake, onSkip, onUndo, onGoToMeds }: TodayScreenProps) {
+export function TodayScreen({
+  data,
+  now,
+  onTake,
+  onSkip,
+  onUndo,
+  onLogAsNeeded,
+  onUndoAsNeeded,
+  onGoToMeds,
+}: TodayScreenProps) {
   const slots = useMemo(() => buildDaySlots(data, now, now), [data, now])
+
+  const asNeededMeds = useMemo(
+    () => sortMedications(data.medications.filter((m) => m.active && m.scheduleKind === 'asNeeded')),
+    [data.medications],
+  )
+
+  const today = dateKey(now)
+  const asNeededToday = useMemo(() => {
+    const byMed = new Map<string, DoseRecord[]>()
+    for (const record of Object.values(data.records)) {
+      if (record.date !== today) continue
+      const list = byMed.get(record.medId) ?? []
+      list.push(record)
+      byMed.set(record.medId, list)
+    }
+    for (const list of byMed.values()) list.sort((a, b) => a.recordedAt - b.recordedAt)
+    return byMed
+  }, [data.records, today])
 
   const takenCount = slots.filter((s) => s.status === 'taken').length
   const dateLabel = now.toLocaleDateString([], {
@@ -46,7 +75,7 @@ export function TodayScreen({ data, now, onTake, onSkip, onUndo, onGoToMeds }: T
         )}
       </header>
 
-      {slots.length === 0 ? (
+      {slots.length === 0 && asNeededMeds.length === 0 ? (
         <div className="empty">
           <Pill size={40} aria-hidden />
           {hasActiveMeds ? (
@@ -102,6 +131,55 @@ export function TodayScreen({ data, now, onTake, onSkip, onUndo, onGoToMeds }: T
             </li>
           ))}
         </ul>
+      )}
+
+      {asNeededMeds.length > 0 && (
+        <div className="as-needed">
+          <h2 className="as-needed__heading">As needed</h2>
+          <ul className="dose-list">
+            {asNeededMeds.map((med) => {
+              const logged = asNeededToday.get(med.id) ?? []
+              return (
+                <li key={med.id} className="dose-card is-asNeeded">
+                  <div className="dose-card__body">
+                    <div className="dose-card__name">{med.name}</div>
+                    {med.dosage && <div className="dose-card__dose">{med.dosage}</div>}
+                    {med.notes && <div className="dose-card__notes">{med.notes}</div>}
+                    {logged.length > 0 && (
+                      <div className="as-needed__log">
+                        {logged.map((record) => (
+                          <span key={record.id} className="as-needed__entry">
+                            {new Date(record.recordedAt).toLocaleTimeString([], {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            })}
+                            <button
+                              type="button"
+                              className="as-needed__undo"
+                              onClick={() => onUndoAsNeeded(record)}
+                              aria-label={`Undo ${med.name} dose at ${formatTime(record.time)}`}
+                            >
+                              <RotateCcw size={13} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="dose-card__actions">
+                    <button
+                      type="button"
+                      className="btn btn--primary btn--sm"
+                      onClick={() => onLogAsNeeded(med)}
+                    >
+                      <Plus size={16} /> Log dose
+                    </button>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
       )}
     </section>
   )

@@ -172,6 +172,56 @@
   color: var(--danger);
 }
 
+/* ---------- As-needed section ---------- */
+.as-needed {
+  margin-top: 26px;
+}
+.as-needed__heading {
+  font-size: 0.85rem;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.dose-card.is-asNeeded {
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'body actions';
+  align-items: center;
+}
+.dose-card.is-asNeeded .dose-card__actions {
+  grid-area: actions;
+  margin-top: 0;
+}
+.as-needed__log {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.as-needed__entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(52, 211, 153, 0.16);
+  color: var(--good);
+  border-radius: 999px;
+  padding: 3px 4px 3px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.as-needed__undo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--good);
+}
+.as-needed__undo:hover {
+  background: rgba(52, 211, 153, 0.22);
+}
+
 /* ---------- Medication cards ---------- */
 .med-card {
   display: flex;
@@ -634,6 +684,66 @@
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
   color: #04221f;
   border-color: transparent;
+}
+
+.segmented {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 4px;
+}
+.segmented__btn {
+  flex: 1;
+  padding: 9px 8px;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: background 0.15s, color 0.15s;
+}
+.segmented__btn.is-active {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  color: #04221f;
+}
+
+.field-row {
+  display: flex;
+  gap: 12px;
+}
+.field-row .field {
+  flex: 1;
+}
+.interval-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.interval-input input {
+  width: 80px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 11px 13px;
+  color: var(--text);
+  font-size: 1rem;
+}
+.interval-input input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.interval-input__unit {
+  color: var(--text-dim);
+  font-size: 0.95rem;
+}
+
+.form__hint {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin: 0;
+  line-height: 1.4;
 }
 
 .form__error {

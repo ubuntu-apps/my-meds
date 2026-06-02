@@ -34,6 +34,63 @@ export function formatDays(days: number[] | undefined): string {
     .join(', ')
 }
 
+/** Default interval settings used when fields are missing or invalid. */
+export const DEFAULT_INTERVAL_HOURS = 8
+export const DEFAULT_INTERVAL_START = '08:00'
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0')
+}
+
+function minutesToTime(totalMinutes: number): string {
+  const hh = Math.floor(totalMinutes / 60)
+  const mm = totalMinutes % 60
+  return `${pad2(hh)}:${pad2(mm)}`
+}
+
+/** Clamp an interval to a sane whole-hour value (1–24 hours). */
+export function normalizeIntervalHours(hours: number | undefined): number {
+  if (!hours || !Number.isFinite(hours)) return DEFAULT_INTERVAL_HOURS
+  return Math.min(24, Math.max(1, Math.round(hours)))
+}
+
+/**
+ * Expand an interval schedule into the concrete dose times for a single day,
+ * starting at `start` and stepping by `hours` until the end of the day.
+ */
+export function expandInterval(start: string, hours: number): string[] {
+  const [h, m] = start.split(':').map(Number)
+  const startMin = (Number.isFinite(h) ? h : 8) * 60 + (Number.isFinite(m) ? m : 0)
+  const step = normalizeIntervalHours(hours) * 60
+  const times: string[] = []
+  for (let t = startMin; t < 24 * 60; t += step) times.push(minutesToTime(t))
+  return times
+}
+
+/** The concrete dose times for a medication on any given (scheduled) day. */
+export function scheduledTimesFor(med: Medication): string[] {
+  if (med.scheduleKind === 'asNeeded') return []
+  if (med.scheduleKind === 'interval') {
+    return expandInterval(
+      med.intervalStart ?? DEFAULT_INTERVAL_START,
+      med.intervalHours ?? DEFAULT_INTERVAL_HOURS,
+    )
+  }
+  return med.times
+}
+
+/** A human-friendly schedule summary line, e.g. "Every 8 hours" or "As needed". */
+export function formatSchedule(med: Medication): string {
+  if (med.scheduleKind === 'asNeeded') return 'As needed'
+  if (med.scheduleKind === 'interval') {
+    const hours = normalizeIntervalHours(med.intervalHours)
+    const start = med.intervalStart ?? DEFAULT_INTERVAL_START
+    const unit = hours === 1 ? 'hour' : `${hours} hours`
+    return `Every ${unit} from ${formatTime(start)}`
+  }
+  return med.times.map(formatTime).join(', ')
+}
+
 /** Format a Date as a local "YYYY-MM-DD" key. */
 export function dateKey(date: Date): string {
   const y = date.getFullYear()
@@ -85,8 +142,9 @@ export function buildDaySlots(data: AppData, day: Date, now: Date = new Date()):
 
   for (const med of data.medications) {
     if (!med.active) continue
+    if (med.scheduleKind === 'asNeeded') continue
     if (!isActiveOnDay(med.days, day)) continue
-    for (const time of med.times) {
+    for (const time of scheduledTimesFor(med)) {
       const scheduledAt = toDate(date, time)
       const reminderAt = new Date(scheduledAt.getTime() - REMINDER_LEAD_MINUTES * 60_000)
       const record = data.records[slotId(med.id, date, time)]

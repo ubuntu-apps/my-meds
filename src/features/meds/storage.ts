@@ -1,4 +1,4 @@
-import type { AppData } from './types'
+import type { AppData, Medication, ScheduleKind } from './types'
 
 const STORAGE_KEY = 'my-meds:data:v1'
 
@@ -12,12 +12,17 @@ export function loadData(): AppData {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return emptyData
     const parsed = JSON.parse(raw) as Partial<AppData>
+    const validKinds: ScheduleKind[] = ['fixed', 'interval', 'asNeeded']
     const medications = Array.isArray(parsed.medications)
-      ? parsed.medications.map((m) => ({
+      ? (parsed.medications as Partial<Medication>[]).map((m) => ({
           ...m,
-          // Backfill the schedule field for meds saved before day-of-week support.
+          // Backfill the day-of-week field for meds saved before that feature.
           days: Array.isArray(m.days) ? m.days : [],
-        }))
+          // Backfill the schedule kind for meds saved before interval/as-needed support.
+          scheduleKind: validKinds.includes(m.scheduleKind as ScheduleKind)
+            ? (m.scheduleKind as ScheduleKind)
+            : 'fixed',
+        })) as Medication[]
       : []
     return {
       medications,

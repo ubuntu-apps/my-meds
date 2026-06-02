@@ -1,17 +1,31 @@
 export type DoseStatus = 'taken' | 'skipped'
 
+/**
+ * How a medication is scheduled:
+ * - `fixed`    — one or more explicit times of day.
+ * - `interval` — repeated every N hours from a starting time.
+ * - `asNeeded` — no schedule or reminders; logged ad hoc when taken.
+ */
+export type ScheduleKind = 'fixed' | 'interval' | 'asNeeded'
+
 export interface Medication {
   id: string
   name: string
   dosage: string
   notes: string
-  /** Local times of day this medication is taken, formatted "HH:mm", sorted ascending. */
+  scheduleKind: ScheduleKind
+  /** Fixed schedule: local times of day, formatted "HH:mm", sorted ascending. */
   times: string[]
   /**
    * Days of the week this medication is taken, using JS getDay() numbering
    * (0 = Sunday … 6 = Saturday). An empty array or all seven days means "daily".
+   * Ignored for `asNeeded` medications.
    */
   days: number[]
+  /** Interval schedule: hours between doses (1–24). */
+  intervalHours?: number
+  /** Interval schedule: time of the first dose each day, "HH:mm". */
+  intervalStart?: string
   active: boolean
   createdAt: number
 }

@@ -85,6 +85,8 @@ export default function App() {
             onTake={(slot) => meds.recordDose(slot.medication.id, slot.date, slot.time, 'taken')}
             onSkip={(slot) => meds.recordDose(slot.medication.id, slot.date, slot.time, 'skipped')}
             onUndo={(slot) => meds.clearDose(slot.medication.id, slot.date, slot.time)}
+            onLogAsNeeded={(med) => meds.logAsNeeded(med.id)}
+            onUndoAsNeeded={(record) => meds.clearDose(record.medId, record.date, record.time)}
             onGoToMeds={() => {
               setTab('meds')
               setForm({ mode: 'add' })

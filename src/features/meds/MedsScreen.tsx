@@ -1,6 +1,6 @@
 import { Plus, Pencil, Pill, CalendarDays } from 'lucide-react'
 import type { AppData, Medication } from './types'
-import { formatDays, formatTime, sortMedications } from './schedule'
+import { formatDays, formatSchedule, formatTime, sortMedications } from './schedule'
 
 interface MedsScreenProps {
   data: AppData
@@ -39,17 +39,25 @@ export function MedsScreen({ data, onAdd, onEdit, onToggleActive }: MedsScreenPr
               <div className="med-card__main">
                 <div className="med-card__name">{med.name}</div>
                 {med.dosage && <div className="med-card__dose">{med.dosage}</div>}
-                <div className="med-card__times">
-                  {med.times.map((t) => (
-                    <span key={t} className="time-chip">
-                      {formatTime(t)}
-                    </span>
-                  ))}
-                </div>
-                <div className="med-card__days">
-                  <CalendarDays size={14} aria-hidden />
-                  {formatDays(med.days)}
-                </div>
+                {med.scheduleKind === 'fixed' ? (
+                  <div className="med-card__times">
+                    {med.times.map((t) => (
+                      <span key={t} className="time-chip">
+                        {formatTime(t)}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="med-card__times">
+                    <span className="time-chip">{formatSchedule(med)}</span>
+                  </div>
+                )}
+                {med.scheduleKind !== 'asNeeded' && (
+                  <div className="med-card__days">
+                    <CalendarDays size={14} aria-hidden />
+                    {formatDays(med.days)}
+                  </div>
+                )}
                 {med.notes && <div className="med-card__notes">{med.notes}</div>}
               </div>
               <div className="med-card__side">
