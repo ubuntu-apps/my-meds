@@ -212,6 +212,17 @@
   font-size: 0.78rem;
   font-weight: 600;
 }
+.med-card__days {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+}
+.med-card__days svg {
+  color: var(--accent);
+}
 .med-card__side {
   display: flex;
   flex-direction: column;
@@ -221,6 +232,67 @@
 }
 
 /* ---------- History ---------- */
+.history__filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.history__filter label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+.history__filter select {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+.history__filter select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.stats {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px 8px;
+}
+.stat__value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.stat__value--good {
+  color: var(--good);
+}
+.stat__value--danger {
+  color: var(--danger);
+}
+.stat__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
 .history {
   display: flex;
   flex-direction: column;
@@ -526,6 +598,42 @@
   padding: 10px 13px;
   color: var(--text);
   font-size: 1rem;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.checkbox-row input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent-strong);
+}
+
+.weekdays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.day-chip {
+  min-width: 46px;
+  padding: 9px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.day-chip.is-selected {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  color: #04221f;
+  border-color: transparent;
 }
 
 .form__error {

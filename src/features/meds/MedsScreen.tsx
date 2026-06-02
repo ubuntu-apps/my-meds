@@ -1,6 +1,6 @@
-import { Plus, Pencil, Pill } from 'lucide-react'
+import { Plus, Pencil, Pill, CalendarDays } from 'lucide-react'
 import type { AppData, Medication } from './types'
-import { formatTime, sortMedications } from './schedule'
+import { formatDays, formatTime, sortMedications } from './schedule'
 
 interface MedsScreenProps {
   data: AppData
@@ -45,6 +45,10 @@ export function MedsScreen({ data, onAdd, onEdit, onToggleActive }: MedsScreenPr
                       {formatTime(t)}
                     </span>
                   ))}
+                </div>
+                <div className="med-card__days">
+                  <CalendarDays size={14} aria-hidden />
+                  {formatDays(med.days)}
                 </div>
                 {med.notes && <div className="med-card__notes">{med.notes}</div>}
               </div>

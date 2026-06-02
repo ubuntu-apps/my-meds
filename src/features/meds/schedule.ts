@@ -3,6 +3,37 @@ import type { AppData, DoseSlot, Medication, SlotStatus } from './types'
 /** Minutes before the scheduled time that a reminder should fire. */
 export const REMINDER_LEAD_MINUTES = 15
 
+/** Weekdays ordered Monday-first for display, with short labels. */
+export const WEEKDAYS: { value: number; short: string }[] = [
+  { value: 1, short: 'Mon' },
+  { value: 2, short: 'Tue' },
+  { value: 3, short: 'Wed' },
+  { value: 4, short: 'Thu' },
+  { value: 5, short: 'Fri' },
+  { value: 6, short: 'Sat' },
+  { value: 0, short: 'Sun' },
+]
+
+/** True when a medication is taken every day (empty or all seven days). */
+export function isDaily(days: number[] | undefined): boolean {
+  return !days || days.length === 0 || days.length >= 7
+}
+
+/** Whether a medication is scheduled on the weekday of the given date. */
+export function isActiveOnDay(days: number[] | undefined, day: Date): boolean {
+  if (isDaily(days)) return true
+  return days!.includes(day.getDay())
+}
+
+/** A human-friendly schedule summary, e.g. "Every day" or "Mon, Wed, Fri". */
+export function formatDays(days: number[] | undefined): string {
+  if (isDaily(days)) return 'Every day'
+  const set = new Set(days)
+  return WEEKDAYS.filter((d) => set.has(d.value))
+    .map((d) => d.short)
+    .join(', ')
+}
+
 /** Format a Date as a local "YYYY-MM-DD" key. */
 export function dateKey(date: Date): string {
   const y = date.getFullYear()
@@ -54,6 +85,7 @@ export function buildDaySlots(data: AppData, day: Date, now: Date = new Date()):
 
   for (const med of data.medications) {
     if (!med.active) continue
+    if (!isActiveOnDay(med.days, day)) continue
     for (const time of med.times) {
       const scheduledAt = toDate(date, time)
       const reminderAt = new Date(scheduledAt.getTime() - REMINDER_LEAD_MINUTES * 60_000)
@@ -69,6 +101,15 @@ export function buildDaySlots(data: AppData, day: Date, now: Date = new Date()):
 /** Sort medication times ascending and drop duplicates/empties. */
 export function normalizeTimes(times: string[]): string[] {
   return Array.from(new Set(times.filter(Boolean))).sort()
+}
+
+/**
+ * Canonicalize selected weekdays: valid values only, de-duped and sorted.
+ * "Daily" (all seven days) collapses to an empty array.
+ */
+export function normalizeDays(days: number[]): number[] {
+  const valid = Array.from(new Set(days.filter((d) => d >= 0 && d <= 6))).sort()
+  return valid.length >= 7 ? [] : valid
 }
 
 export function sortMedications(meds: Medication[]): Medication[] {

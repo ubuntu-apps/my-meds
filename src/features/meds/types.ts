@@ -7,6 +7,11 @@ export interface Medication {
   notes: string
   /** Local times of day this medication is taken, formatted "HH:mm", sorted ascending. */
   times: string[]
+  /**
+   * Days of the week this medication is taken, using JS getDay() numbering
+   * (0 = Sunday … 6 = Saturday). An empty array or all seven days means "daily".
+   */
+  days: number[]
   active: boolean
   createdAt: number
 }

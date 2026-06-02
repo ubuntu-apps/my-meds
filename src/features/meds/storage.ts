@@ -12,8 +12,15 @@ export function loadData(): AppData {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return emptyData
     const parsed = JSON.parse(raw) as Partial<AppData>
+    const medications = Array.isArray(parsed.medications)
+      ? parsed.medications.map((m) => ({
+          ...m,
+          // Backfill the schedule field for meds saved before day-of-week support.
+          days: Array.isArray(m.days) ? m.days : [],
+        }))
+      : []
     return {
-      medications: Array.isArray(parsed.medications) ? parsed.medications : [],
+      medications,
       records: parsed.records && typeof parsed.records === 'object' ? parsed.records : {},
     }
   } catch {

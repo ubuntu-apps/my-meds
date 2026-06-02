@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
 import type { Medication } from './types'
 import type { MedicationInput } from './useMeds'
+import { isDaily, WEEKDAYS } from './schedule'
 
 interface MedFormProps {
   initial?: Medication
@@ -15,7 +16,17 @@ export function MedForm({ initial, onSave, onCancel, onDelete }: MedFormProps) {
   const [dosage, setDosage] = useState(initial?.dosage ?? '')
   const [notes, setNotes] = useState(initial?.notes ?? '')
   const [times, setTimes] = useState<string[]>(initial?.times.length ? initial.times : ['08:00'])
+  const [daily, setDaily] = useState(isDaily(initial?.days))
+  const [selectedDays, setSelectedDays] = useState<number[]>(
+    initial && !isDaily(initial.days) ? initial.days : [],
+  )
   const [error, setError] = useState('')
+
+  const toggleDay = (value: number) => {
+    setSelectedDays((prev) =>
+      prev.includes(value) ? prev.filter((d) => d !== value) : [...prev, value],
+    )
+  }
 
   const updateTime = (index: number, value: string) => {
     setTimes((prev) => prev.map((t, i) => (i === index ? value : t)))
@@ -36,7 +47,11 @@ export function MedForm({ initial, onSave, onCancel, onDelete }: MedFormProps) {
       setError('Add at least one time of day.')
       return
     }
-    onSave({ name, dosage, notes, times: cleanTimes })
+    if (!daily && selectedDays.length === 0) {
+      setError('Pick at least one day, or choose Daily.')
+      return
+    }
+    onSave({ name, dosage, notes, times: cleanTimes, days: daily ? [] : selectedDays })
   }
 
   return (
@@ -107,6 +122,33 @@ export function MedForm({ initial, onSave, onCancel, onDelete }: MedFormProps) {
                 <Plus size={18} /> Add another time
               </button>
             </div>
+          </div>
+
+          <div className="field">
+            <span>Days</span>
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={daily}
+                onChange={(e) => setDaily(e.target.checked)}
+              />
+              <span>Daily</span>
+            </label>
+            {!daily && (
+              <div className="weekdays">
+                {WEEKDAYS.map((d) => (
+                  <button
+                    type="button"
+                    key={d.value}
+                    className={`day-chip${selectedDays.includes(d.value) ? ' is-selected' : ''}`}
+                    aria-pressed={selectedDays.includes(d.value)}
+                    onClick={() => toggleDay(d.value)}
+                  >
+                    {d.short}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {error && <p className="form__error">{error}</p>}

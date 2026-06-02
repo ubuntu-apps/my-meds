@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AppData, DoseStatus, Medication } from './types'
 import { createId, loadData, saveData } from './storage'
-import { normalizeTimes, slotId } from './schedule'
+import { normalizeDays, normalizeTimes, slotId } from './schedule'
 
 export interface MedicationInput {
   name: string
   dosage: string
   notes: string
   times: string[]
+  days: number[]
 }
 
 export function useMeds() {
@@ -33,6 +34,7 @@ export function useMeds() {
       dosage: input.dosage.trim(),
       notes: input.notes.trim(),
       times: normalizeTimes(input.times),
+      days: normalizeDays(input.days),
       active: true,
       createdAt: Date.now(),
     }
@@ -51,6 +53,7 @@ export function useMeds() {
               dosage: input.dosage.trim(),
               notes: input.notes.trim(),
               times: normalizeTimes(input.times),
+              days: normalizeDays(input.days),
             }
           : m,
       ),
