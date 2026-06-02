@@ -5,6 +5,9 @@ node_modules/
 dist/
 dev-dist/
 
+# generated PWA icons (produced by `npm run generate-icons`)
+public/icons/
+
 # logs
 npm-debug.log*
 yarn-debug.log*
