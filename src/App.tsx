@@ -3,6 +3,7 @@ import { Bell, X } from 'lucide-react'
 import './App.css'
 import { BottomNav } from './components/BottomNav'
 import type { Tab } from './components/BottomNav'
+import { InstallAppBanner } from './components/InstallAppBanner'
 import { useMeds } from './features/meds/useMeds'
 import type { MedicationInput } from './features/meds/useMeds'
 import { useReminders } from './features/meds/useReminders'
@@ -12,6 +13,7 @@ import { HistoryScreen } from './features/meds/HistoryScreen'
 import { MedForm } from './features/meds/MedForm'
 import type { Medication } from './features/meds/types'
 import { APP_VERSION } from './version'
+import { resetInstallBannerPreference } from './components/InstallAppBanner'
 
 type FormState = { mode: 'add' } | { mode: 'edit'; med: Medication } | null
 
@@ -54,6 +56,8 @@ export default function App() {
   return (
     <div className="app">
       <main className="app__main">
+        <InstallAppBanner />
+
         {showReminderBanner && (
           <div className="banner">
             <Bell size={18} aria-hidden />
@@ -110,7 +114,9 @@ export default function App() {
           />
         )}
 
-        {tab === 'history' && <HistoryScreen data={meds.data} />}
+        {tab === 'history' && (
+          <HistoryScreen data={meds.data} onResetInstallPrompt={resetInstallBannerPreference} />
+        )}
 
         <p className="app__version">My Meds v{APP_VERSION}</p>
       </main>
