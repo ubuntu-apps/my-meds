@@ -5,6 +5,7 @@ import { formatTime } from './schedule'
 
 interface HistoryScreenProps {
   data: AppData
+  onResetInstallPrompt: () => void
 }
 
 interface DayGroup {
@@ -15,8 +16,9 @@ interface DayGroup {
 
 const ALL = '__all__'
 
-export function HistoryScreen({ data }: HistoryScreenProps) {
+export function HistoryScreen({ data, onResetInstallPrompt }: HistoryScreenProps) {
   const [medFilter, setMedFilter] = useState<string>(ALL)
+  const [installResetNotice, setInstallResetNotice] = useState<string | null>(null)
 
   const medName = useMemo(() => {
     const map = new Map<string, string>()
@@ -81,7 +83,18 @@ export function HistoryScreen({ data }: HistoryScreenProps) {
           <p className="screen__eyebrow">Your log</p>
           <h1>History</h1>
         </div>
+        <button
+          type="button"
+          className="btn btn--ghost btn--sm"
+          onClick={() => {
+            onResetInstallPrompt()
+            setInstallResetNotice('Install prompt banner reset for this device.')
+          }}
+        >
+          Reset install prompt
+        </button>
       </header>
+      {installResetNotice && <p className="form__hint">{installResetNotice}</p>}
 
       {hasAnyRecords && (
         <>
