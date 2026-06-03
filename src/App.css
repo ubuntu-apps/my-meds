@@ -12,12 +12,18 @@
   padding: max(env(safe-area-inset-top), 18px) 18px calc(96px + env(safe-area-inset-bottom)) 18px;
 }
 
+.app__test-speech {
+  display: block;
+  margin: 28px auto 0;
+  opacity: 0.75;
+}
+
 .app__version {
   text-align: center;
   color: var(--text-dim);
   font-size: 0.72rem;
   opacity: 0.6;
-  margin: 28px 0 0;
+  margin: 10px 0 0;
 }
 
 /* ---------- Screens ---------- */
