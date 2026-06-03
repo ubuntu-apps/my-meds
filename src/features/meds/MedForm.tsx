@@ -114,11 +114,11 @@ export function MedForm({ initial, onSave, onCancel, onDelete }: MedFormProps) {
                 <span>Every</span>
                 <div className="interval-input">
                   <input
-                    type="number"
-                    min={1}
-                    max={24}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={form.intervalHours}
-                    onChange={(e) => form.setIntervalHours(Number(e.target.value))}
+                    onChange={(e) => form.updateIntervalHours(e.target.value)}
                     aria-label="Interval in hours"
                   />
                   <span className="interval-input__unit">hours</span>

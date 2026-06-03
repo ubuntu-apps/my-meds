@@ -10,7 +10,13 @@ export function useMedFormState(initial?: Medication) {
   const [notes, setNotes] = useState(initial?.notes ?? '')
   const [scheduleKind, setScheduleKind] = useState<ScheduleKind>(initial?.scheduleKind ?? 'fixed')
   const [times, setTimes] = useState<string[]>(initial?.times.length ? initial.times : ['08:00'])
-  const [intervalHours, setIntervalHours] = useState(initial?.intervalHours ?? DEFAULT_INTERVAL_HOURS)
+  const [intervalHours, setIntervalHours] = useState(
+    String(initial?.intervalHours ?? DEFAULT_INTERVAL_HOURS),
+  )
+
+  const updateIntervalHours = (raw: string) => {
+    setIntervalHours(raw.replace(/\D/g, '').slice(0, 2))
+  }
   const [intervalStart, setIntervalStart] = useState(initial?.intervalStart ?? DEFAULT_INTERVAL_START)
   const [daily, setDaily] = useState(isDaily(initial?.days))
   const [selectedDays, setSelectedDays] = useState<number[]>(
@@ -60,7 +66,7 @@ export function useMedFormState(initial?: Medication) {
       scheduleKind,
       times: times.filter(Boolean),
       days: daily ? [] : selectedDays,
-      intervalHours,
+      intervalHours: Number(intervalHours),
       intervalStart,
       reminderAlert: scheduleKind === 'asNeeded' ? undefined : reminderAlert,
     }
@@ -77,7 +83,7 @@ export function useMedFormState(initial?: Medication) {
     setScheduleKind,
     times,
     intervalHours,
-    setIntervalHours,
+    updateIntervalHours,
     intervalStart,
     setIntervalStart,
     daily,
