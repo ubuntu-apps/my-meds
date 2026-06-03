@@ -8,6 +8,9 @@ export type DoseStatus = 'taken' | 'skipped'
  */
 export type ScheduleKind = 'fixed' | 'interval' | 'asNeeded'
 
+/** How a scheduled dose reminder is announced when the app is open. */
+export type ReminderAlert = 'speech' | 'sound'
+
 export interface Medication {
   id: string
   name: string
@@ -26,6 +29,8 @@ export interface Medication {
   intervalHours?: number
   /** Interval schedule: time of the first dose each day, "HH:mm". */
   intervalStart?: string
+  /** Speech or sound when a reminder fires; only used for scheduled medications. */
+  reminderAlert: ReminderAlert
   active: boolean
   createdAt: number
 }

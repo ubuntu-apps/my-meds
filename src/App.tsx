@@ -14,7 +14,6 @@ import { MedForm } from './features/meds/MedForm'
 import type { Medication } from './features/meds/types'
 import { APP_VERSION } from './version'
 import { resetInstallBannerPreference } from './components/InstallAppBanner'
-import { speakReminder } from './features/meds/reminderSpeech'
 
 type FormState = { mode: 'add' } | { mode: 'edit'; med: Medication } | null
 
@@ -153,16 +152,6 @@ export default function App() {
         {tab === 'history' && (
           <HistoryScreen data={meds.data} onResetInstallPrompt={resetInstallBannerPreference} />
         )}
-
-        <button
-          type="button"
-          className="btn btn--ghost btn--sm app__test-speech"
-          onClick={() =>
-            speakReminder('Reminder: take Aspirin, 1 tablet in 15 minutes, at 8:00 AM.')
-          }
-        >
-          Test speech (temp)
-        </button>
 
         <p className="app__version">My Meds v{APP_VERSION}</p>
       </main>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { AppData, DoseStatus, Medication, ScheduleKind } from './types'
+import type { AppData, DoseStatus, Medication, ReminderAlert, ScheduleKind } from './types'
 import { createId, loadData, saveData } from './storage'
 import { dateKey, normalizeDays, normalizeIntervalHours, normalizeTimes, slotId } from './schedule'
 
@@ -12,6 +12,7 @@ export interface MedicationInput {
   days: number[]
   intervalHours?: number
   intervalStart?: string
+  reminderAlert?: ReminderAlert
 }
 
 function buildSchedule(input: MedicationInput): Pick<
@@ -60,6 +61,7 @@ export function useMeds() {
       dosage: input.dosage.trim(),
       notes: input.notes.trim(),
       ...buildSchedule(input),
+      reminderAlert: input.scheduleKind === 'asNeeded' ? 'speech' : (input.reminderAlert ?? 'speech'),
       active: true,
       createdAt: Date.now(),
     }
@@ -80,6 +82,8 @@ export function useMeds() {
               intervalHours: undefined,
               intervalStart: undefined,
               ...buildSchedule(input),
+              reminderAlert:
+                input.scheduleKind === 'asNeeded' ? 'speech' : (input.reminderAlert ?? m.reminderAlert),
             }
           : m,
       ),
