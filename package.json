@@ -6,21 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:cap": "tsc -b && vite build --mode capacitor",
-    "cap:sync": "npm run build:cap && npx cap sync",
-    "cap:android": "npx cap open android",
-    "cap:ios": "npx cap open ios",
     "lint": "eslint .",
     "preview": "vite preview",
     "generate-icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
-    "@capacitor/android": "^8.4.0",
-    "@capacitor/app": "^8.1.0",
-    "@capacitor/cli": "^8.4.0",
-    "@capacitor/core": "^8.4.0",
-    "@capacitor/ios": "^8.4.0",
-    "@capacitor/local-notifications": "^8.2.0",
     "lucide-react": "^0.441.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

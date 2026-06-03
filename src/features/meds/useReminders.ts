@@ -2,14 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import type { AppData, DoseSlot, ReminderAlert } from './types'
 import { buildDaySlots, dateKey, formatTime, REMINDER_LEAD_MINUTES, slotId } from './schedule'
 import { triggerReminderAlert } from './reminderAlert'
-import { isNativeApp } from '../../platform/native'
-import {
-  attachNativeNotificationListeners,
-  checkNativePermission,
-  requestNativePermission,
-  scheduleSnoozeNotification,
-  syncMedicationNotifications,
-} from './nativeNotifications'
 
 const NOTIFIED_KEY = 'my-meds:notified:v1'
 const SNOOZE_KEY = 'my-meds:snooze:v1'
@@ -75,13 +67,7 @@ function saveNotified(today: string, ids: Set<string>): void {
 
 export type PermissionState = NotificationPermission | 'unsupported'
 
-async function readPermission(): Promise<PermissionState> {
-  if (isNativeApp()) {
-    const native = await checkNativePermission()
-    if (native === 'granted') return 'granted'
-    if (native === 'denied') return 'denied'
-    return 'default'
-  }
+function currentPermission(): PermissionState {
   if (typeof Notification === 'undefined') return 'unsupported'
   return Notification.permission
 }
@@ -116,38 +102,21 @@ async function showReminder(
 }
 
 export function useReminders(data: AppData) {
-  const [permission, setPermission] = useState<PermissionState>('default')
-
-  useEffect(() => {
-    void readPermission().then(setPermission)
-  }, [])
-
-  useEffect(() => {
-    return attachNativeNotificationListeners()
-  }, [])
+  const [permission, setPermission] = useState<PermissionState>(() => currentPermission())
 
   const requestPermission = useCallback(async () => {
-    if (isNativeApp()) {
-      const result = await requestNativePermission()
-      const mapped: PermissionState =
-        result === 'granted' ? 'granted' : result === 'denied' ? 'denied' : 'default'
-      setPermission(mapped)
-      if (mapped === 'granted') await syncMedicationNotifications(data)
-      return
-    }
     if (typeof Notification === 'undefined') return
     const result = await Notification.requestPermission()
     setPermission(result)
-  }, [data])
+  }, [])
 
   const snooze = useCallback((slot: DoseSlot, minutes: number = SNOOZE_MINUTES) => {
     const id = slotId(slot.medication.id, slot.date, slot.time)
     const dose = slot.medication.dosage ? ` (${slot.medication.dosage})` : ''
     const timeLabel = formatTime(slot.time)
-    const remindAt = Date.now() + minutes * 60_000
     const entry: SnoozeEntry = {
       id,
-      remindAt,
+      remindAt: Date.now() + minutes * 60_000,
       title: `${slot.medication.name} reminder`,
       body: `Snoozed — take${dose} when you can.`,
       alert: slot.medication.reminderAlert,
@@ -157,15 +126,9 @@ export function useReminders(data: AppData) {
     const entries = loadSnoozes().filter((e) => e.id !== id)
     entries.push(entry)
     saveSnoozes(entries)
-    void scheduleSnoozeNotification(slot, remindAt)
   }, [])
 
-  // On native, the OS fires scheduled local notifications when the app is closed.
   useEffect(() => {
-    if (isNativeApp()) {
-      if (permission === 'granted') void syncMedicationNotifications(data)
-      return
-    }
     if (permission !== 'granted') return
 
     let cancelled = false
@@ -233,5 +196,5 @@ export function useReminders(data: AppData) {
     }
   }, [data, permission])
 
-  return { permission, requestPermission, snooze, isNative: isNativeApp() }
+  return { permission, requestPermission, snooze }
 }
