@@ -3,8 +3,9 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
-export default defineConfig({
-  base: '/my-meds/',
+export default defineConfig(({ mode }) => ({
+  // Capacitor loads from dist/ with relative asset paths; GitHub Pages uses /my-meds/.
+  base: mode === 'capacitor' ? './' : '/my-meds/',
   plugins: [
     react(),
     VitePWA({
@@ -45,4 +46,4 @@ export default defineConfig({
       },
     }),
   ],
-})
+}))
