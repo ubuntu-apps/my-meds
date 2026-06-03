@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AppData, DoseSlot } from './types'
 import { buildDaySlots, dateKey, formatTime, REMINDER_LEAD_MINUTES, slotId } from './schedule'
+import { speakReminder } from './reminderSpeech'
 
 const NOTIFIED_KEY = 'my-meds:notified:v1'
 const SNOOZE_KEY = 'my-meds:snooze:v1'
@@ -19,6 +20,17 @@ interface SnoozeEntry {
   remindAt: number
   title: string
   body: string
+  speech?: string
+}
+
+function buildLeadReminderSpeech(name: string, time: string, dosage?: string): string {
+  const dosePart = dosage ? `, ${dosage}` : ''
+  return `Reminder: take ${name}${dosePart} in ${REMINDER_LEAD_MINUTES} minutes, at ${time}.`
+}
+
+function buildSnoozeReminderSpeech(name: string, dosage?: string): string {
+  const dosePart = dosage ? `, ${dosage}` : ''
+  return `Reminder: time to take ${name}${dosePart}.`
 }
 
 function loadSnoozes(): SnoozeEntry[] {
@@ -68,7 +80,8 @@ function currentPermission(): PermissionState {
   return Notification.permission
 }
 
-async function showReminder(title: string, body: string): Promise<void> {
+async function showReminder(title: string, body: string, speech?: string): Promise<void> {
+  if (speech) speakReminder(speech)
   // Prefer the service worker registration so notifications behave correctly
   // on mobile / when the app is installed; fall back to a page notification.
   try {
@@ -107,6 +120,7 @@ export function useReminders(data: AppData) {
       remindAt: Date.now() + minutes * 60_000,
       title: `${slot.medication.name} reminder`,
       body: `Snoozed — take${dose} when you can.`,
+      speech: buildSnoozeReminderSpeech(slot.medication.name, slot.medication.dosage),
     }
     const entries = loadSnoozes().filter((e) => e.id !== id)
     entries.push(entry)
@@ -133,9 +147,11 @@ export function useReminders(data: AppData) {
         const sinceReminder = now.getTime() - slot.reminderAt.getTime()
         if (sinceReminder >= 0 && sinceReminder <= REMINDER_WINDOW_MS) {
           const dose = slot.medication.dosage ? ` (${slot.medication.dosage})` : ''
+          const timeLabel = formatTime(slot.time)
           void showReminder(
             `${slot.medication.name} in ${REMINDER_LEAD_MINUTES} min`,
-            `Take at ${formatTime(slot.time)}${dose}.`,
+            `Take at ${timeLabel}${dose}.`,
+            buildLeadReminderSpeech(slot.medication.name, timeLabel, slot.medication.dosage),
           )
           notified.add(id)
           changed = true
@@ -156,7 +172,9 @@ export function useReminders(data: AppData) {
             continue
           }
           if (now.getTime() >= entry.remindAt) {
-            void showReminder(entry.title, entry.body)
+            const speech =
+              entry.speech ?? buildSnoozeReminderSpeech(entry.title.replace(/ reminder$/i, ''))
+            void showReminder(entry.title, entry.body, speech)
             snoozeChanged = true
           } else {
             remaining.push(entry)
