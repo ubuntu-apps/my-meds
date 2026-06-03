@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
-import type { Medication, ScheduleKind } from './types'
+import type { Medication, ReminderAlert, ScheduleKind } from './types'
 import type { MedicationInput } from './useMeds'
+import { triggerReminderAlert } from './reminderAlert'
 import {
   DEFAULT_INTERVAL_HOURS,
   DEFAULT_INTERVAL_START,
+  formatTime,
   isDaily,
   WEEKDAYS,
 } from './schedule'
@@ -20,6 +22,11 @@ const SCHEDULE_OPTIONS: { value: ScheduleKind; label: string }[] = [
   { value: 'fixed', label: 'Set times' },
   { value: 'interval', label: 'Every X hours' },
   { value: 'asNeeded', label: 'As needed' },
+]
+
+const REMINDER_ALERT_OPTIONS: { value: ReminderAlert; label: string }[] = [
+  { value: 'speech', label: 'Speech' },
+  { value: 'sound', label: 'Sound' },
 ]
 
 export function MedForm({ initial, onSave, onCancel, onDelete }: MedFormProps) {
@@ -38,6 +45,7 @@ export function MedForm({ initial, onSave, onCancel, onDelete }: MedFormProps) {
   const [selectedDays, setSelectedDays] = useState<number[]>(
     initial && !isDaily(initial.days) ? initial.days : [],
   )
+  const [reminderAlert, setReminderAlert] = useState<ReminderAlert>(initial?.reminderAlert ?? 'speech')
   const [error, setError] = useState('')
 
   const toggleDay = (value: number) => {
@@ -53,6 +61,17 @@ export function MedForm({ initial, onSave, onCancel, onDelete }: MedFormProps) {
   const addTime = () => setTimes((prev) => [...prev, '12:00'])
   const removeTime = (index: number) =>
     setTimes((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)))
+
+  const testReminderTime = (): string => {
+    if (scheduleKind === 'interval') return formatTime(intervalStart)
+    const first = times.find(Boolean)
+    return first ? formatTime(first) : '8:00 AM'
+  }
+
+  const handleTestReminder = () => {
+    const medName = name.trim() || 'Medication'
+    triggerReminderAlert(reminderAlert, medName, testReminderTime())
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -93,6 +112,7 @@ export function MedForm({ initial, onSave, onCancel, onDelete }: MedFormProps) {
       days,
       intervalHours,
       intervalStart,
+      reminderAlert: scheduleKind === 'asNeeded' ? undefined : reminderAlert,
     })
   }
 
@@ -217,6 +237,35 @@ export function MedForm({ initial, onSave, onCancel, onDelete }: MedFormProps) {
             <p className="form__hint">
               No fixed schedule or reminders. Log a dose from the Today screen whenever you take it.
             </p>
+          )}
+
+          {scheduleKind !== 'asNeeded' && (
+            <div className="field">
+              <span>Reminder</span>
+              <div className="segmented" role="group" aria-label="Reminder alert type">
+                {REMINDER_ALERT_OPTIONS.map((opt) => (
+                  <button
+                    type="button"
+                    key={opt.value}
+                    className={`segmented__btn${reminderAlert === opt.value ? ' is-active' : ''}`}
+                    aria-pressed={reminderAlert === opt.value}
+                    onClick={() => setReminderAlert(opt.value)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <p className="form__hint">
+                {reminderAlert === 'speech'
+                  ? 'Speaks the medication name and time when a reminder fires.'
+                  : 'Plays a short chime when a reminder fires.'}
+              </p>
+              {initial && (
+                <button type="button" className="btn btn--ghost btn--sm" onClick={handleTestReminder}>
+                  Test reminder (temp)
+                </button>
+              )}
+            </div>
           )}
 
           {scheduleKind !== 'asNeeded' && (

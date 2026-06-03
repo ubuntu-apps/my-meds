@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { AppData, DoseSlot } from './types'
+import type { AppData, DoseSlot, ReminderAlert } from './types'
 import { buildDaySlots, dateKey, formatTime, REMINDER_LEAD_MINUTES, slotId } from './schedule'
-import { speakReminder } from './reminderSpeech'
+import { triggerReminderAlert } from './reminderAlert'
 
 const NOTIFIED_KEY = 'my-meds:notified:v1'
 const SNOOZE_KEY = 'my-meds:snooze:v1'
@@ -20,17 +20,9 @@ interface SnoozeEntry {
   remindAt: number
   title: string
   body: string
-  speech?: string
-}
-
-function buildLeadReminderSpeech(name: string, time: string, dosage?: string): string {
-  const dosePart = dosage ? `, ${dosage}` : ''
-  return `Reminder: take ${name}${dosePart} in ${REMINDER_LEAD_MINUTES} minutes, at ${time}.`
-}
-
-function buildSnoozeReminderSpeech(name: string, dosage?: string): string {
-  const dosePart = dosage ? `, ${dosage}` : ''
-  return `Reminder: time to take ${name}${dosePart}.`
+  alert: ReminderAlert
+  name: string
+  time: string
 }
 
 function loadSnoozes(): SnoozeEntry[] {
@@ -80,8 +72,14 @@ function currentPermission(): PermissionState {
   return Notification.permission
 }
 
-async function showReminder(title: string, body: string, speech?: string): Promise<void> {
-  if (speech) speakReminder(speech)
+async function showReminder(
+  title: string,
+  body: string,
+  alert: ReminderAlert,
+  name: string,
+  time: string,
+): Promise<void> {
+  triggerReminderAlert(alert, name, time)
   // Prefer the service worker registration so notifications behave correctly
   // on mobile / when the app is installed; fall back to a page notification.
   try {
@@ -115,12 +113,15 @@ export function useReminders(data: AppData) {
   const snooze = useCallback((slot: DoseSlot, minutes: number = SNOOZE_MINUTES) => {
     const id = slotId(slot.medication.id, slot.date, slot.time)
     const dose = slot.medication.dosage ? ` (${slot.medication.dosage})` : ''
+    const timeLabel = formatTime(slot.time)
     const entry: SnoozeEntry = {
       id,
       remindAt: Date.now() + minutes * 60_000,
       title: `${slot.medication.name} reminder`,
       body: `Snoozed — take${dose} when you can.`,
-      speech: buildSnoozeReminderSpeech(slot.medication.name, slot.medication.dosage),
+      alert: slot.medication.reminderAlert,
+      name: slot.medication.name,
+      time: timeLabel,
     }
     const entries = loadSnoozes().filter((e) => e.id !== id)
     entries.push(entry)
@@ -151,7 +152,9 @@ export function useReminders(data: AppData) {
           void showReminder(
             `${slot.medication.name} in ${REMINDER_LEAD_MINUTES} min`,
             `Take at ${timeLabel}${dose}.`,
-            buildLeadReminderSpeech(slot.medication.name, timeLabel, slot.medication.dosage),
+            slot.medication.reminderAlert,
+            slot.medication.name,
+            timeLabel,
           )
           notified.add(id)
           changed = true
@@ -172,9 +175,10 @@ export function useReminders(data: AppData) {
             continue
           }
           if (now.getTime() >= entry.remindAt) {
-            const speech =
-              entry.speech ?? buildSnoozeReminderSpeech(entry.title.replace(/ reminder$/i, ''))
-            void showReminder(entry.title, entry.body, speech)
+            const alert = entry.alert ?? 'speech'
+            const name = entry.name ?? entry.title.replace(/ reminder$/i, '')
+            const time = entry.time ?? ''
+            void showReminder(entry.title, entry.body, alert, name, time)
             snoozeChanged = true
           } else {
             remaining.push(entry)

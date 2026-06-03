@@ -56,6 +56,9 @@ export function MedsScreen({ data, onAdd, onEdit, onToggleActive }: MedsScreenPr
                   <div className="med-card__days">
                     <CalendarDays size={14} aria-hidden />
                     {formatDays(med.days)}
+                    <span className="time-chip">
+                      {med.reminderAlert === 'sound' ? 'Sound reminder' : 'Speech reminder'}
+                    </span>
                   </div>
                 )}
                 {med.notes && <div className="med-card__notes">{med.notes}</div>}

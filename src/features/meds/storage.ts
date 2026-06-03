@@ -1,4 +1,4 @@
-import type { AppData, Medication, ScheduleKind } from './types'
+import type { AppData, Medication, ReminderAlert, ScheduleKind } from './types'
 
 const STORAGE_KEY = 'my-meds:data:v1'
 
@@ -13,6 +13,7 @@ export function loadData(): AppData {
     if (!raw) return emptyData
     const parsed = JSON.parse(raw) as Partial<AppData>
     const validKinds: ScheduleKind[] = ['fixed', 'interval', 'asNeeded']
+    const validAlerts: ReminderAlert[] = ['speech', 'sound']
     const medications = Array.isArray(parsed.medications)
       ? (parsed.medications as Partial<Medication>[]).map((m) => ({
           ...m,
@@ -22,6 +23,9 @@ export function loadData(): AppData {
           scheduleKind: validKinds.includes(m.scheduleKind as ScheduleKind)
             ? (m.scheduleKind as ScheduleKind)
             : 'fixed',
+          reminderAlert: validAlerts.includes(m.reminderAlert as ReminderAlert)
+            ? (m.reminderAlert as ReminderAlert)
+            : 'speech',
         })) as Medication[]
       : []
     return {
