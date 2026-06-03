@@ -1,11 +1,15 @@
 import { useMemo, useState } from 'react'
 import { Check, SkipForward, History as HistoryIcon } from 'lucide-react'
+import { Button, EmptyState, ScreenHeader } from '../../components/ui'
+import { resetInstallBannerPreference } from '../../components/InstallAppBanner'
 import type { AppData, DoseRecord } from './types'
 import { formatTime } from './schedule'
+import { HISTORY_FILTER_ALL } from './constants'
+import { formatShortDayLabel } from './formatters'
+import { buildMedicationNameMap } from './medNames'
 
 interface HistoryScreenProps {
   data: AppData
-  onResetInstallPrompt: () => void
 }
 
 interface DayGroup {
@@ -14,31 +18,21 @@ interface DayGroup {
   records: DoseRecord[]
 }
 
-const ALL = '__all__'
-
-export function HistoryScreen({ data, onResetInstallPrompt }: HistoryScreenProps) {
-  const [medFilter, setMedFilter] = useState<string>(ALL)
+export function HistoryScreen({ data }: HistoryScreenProps) {
+  const [medFilter, setMedFilter] = useState<string>(HISTORY_FILTER_ALL)
   const [installResetNotice, setInstallResetNotice] = useState<string | null>(null)
 
-  const medName = useMemo(() => {
-    const map = new Map<string, string>()
-    for (const m of data.medications) map.set(m.id, m.name)
-    return map
-  }, [data.medications])
+  const medName = useMemo(() => buildMedicationNameMap(data), [data])
 
-  // Medications that actually appear in the log, plus any still defined.
   const filterOptions = useMemo(() => {
-    const ids = new Set<string>()
-    for (const m of data.medications) ids.add(m.id)
-    for (const r of Object.values(data.records)) ids.add(r.medId)
-    return [...ids]
-      .map((id) => ({ id, name: medName.get(id) ?? 'Removed medication' }))
+    return [...medName.entries()]
+      .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name))
-  }, [data.medications, data.records, medName])
+  }, [medName])
 
   const filteredRecords = useMemo(() => {
     const all = Object.values(data.records)
-    return medFilter === ALL ? all : all.filter((r) => r.medId === medFilter)
+    return medFilter === HISTORY_FILTER_ALL ? all : all.filter((r) => r.medId === medFilter)
   }, [data.records, medFilter])
 
   const stats = useMemo(() => {
@@ -63,14 +57,8 @@ export function HistoryScreen({ data, onResetInstallPrompt }: HistoryScreenProps
     return [...byDate.entries()]
       .sort((a, b) => (a[0] < b[0] ? 1 : -1))
       .map(([date, records]) => {
-        const [y, m, d] = date.split('-').map(Number)
-        const label = new Date(y, m - 1, d).toLocaleDateString([], {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-        })
         records.sort((a, b) => (a.time < b.time ? -1 : 1))
-        return { date, label, records }
+        return { date, label: formatShortDayLabel(date), records }
       })
   }, [filteredRecords])
 
@@ -78,23 +66,23 @@ export function HistoryScreen({ data, onResetInstallPrompt }: HistoryScreenProps
 
   return (
     <section className="screen">
-      <header className="screen__header">
-        <div>
-          <p className="screen__eyebrow">Your log</p>
-          <h1>History</h1>
+      <ScreenHeader eyebrow="Your log" title="History" />
+
+      {import.meta.env.DEV && (
+        <div className="history__dev">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              resetInstallBannerPreference()
+              setInstallResetNotice('Install prompt banner reset for this device.')
+            }}
+          >
+            Reset install prompt
+          </Button>
+          {installResetNotice && <p className="form__hint">{installResetNotice}</p>}
         </div>
-        <button
-          type="button"
-          className="btn btn--ghost btn--sm"
-          onClick={() => {
-            onResetInstallPrompt()
-            setInstallResetNotice('Install prompt banner reset for this device.')
-          }}
-        >
-          Reset install prompt
-        </button>
-      </header>
-      {installResetNotice && <p className="form__hint">{installResetNotice}</p>}
+      )}
 
       {hasAnyRecords && (
         <>
@@ -106,7 +94,7 @@ export function HistoryScreen({ data, onResetInstallPrompt }: HistoryScreenProps
                 value={medFilter}
                 onChange={(e) => setMedFilter(e.target.value)}
               >
-                <option value={ALL}>All medications</option>
+                <option value={HISTORY_FILTER_ALL}>All medications</option>
                 {filterOptions.map((opt) => (
                   <option key={opt.id} value={opt.id}>
                     {opt.name}
@@ -136,14 +124,14 @@ export function HistoryScreen({ data, onResetInstallPrompt }: HistoryScreenProps
       )}
 
       {groups.length === 0 ? (
-        <div className="empty">
-          <HistoryIcon size={40} aria-hidden />
-          <p>
-            {hasAnyRecords
+        <EmptyState
+          icon={HistoryIcon}
+          message={
+            hasAnyRecords
               ? 'No doses logged for this medication yet.'
-              : 'No doses logged yet. Taken and skipped doses will show up here.'}
-          </p>
-        </div>
+              : 'No doses logged yet. Taken and skipped doses will show up here.'
+          }
+        />
       ) : (
         <div className="history">
           {groups.map((group) => (

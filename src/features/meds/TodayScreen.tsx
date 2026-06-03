@@ -1,11 +1,15 @@
 import { useMemo } from 'react'
-import { Check, Clock, RotateCcw, SkipForward, Pill, Plus, CheckCheck, AlarmClock } from 'lucide-react'
+import { CheckCheck, Pill, Plus, RotateCcw } from 'lucide-react'
+import { Button, EmptyState, MedInfoFromMed, ScreenHeader } from '../../components/ui'
 import type { AppData, DoseRecord, DoseSlot, Medication } from './types'
 import { buildDaySlots, dateKey, formatTime, sortMedications } from './schedule'
+import { formatLongDayLabel, formatRecordedTime } from './formatters'
+import { DoseCard } from './components/DoseCard'
 
 interface TodayScreenProps {
   data: AppData
   now: Date
+  canSnooze: boolean
   onTake: (slot: DoseSlot) => void
   onSkip: (slot: DoseSlot) => void
   onUndo: (slot: DoseSlot) => void
@@ -14,26 +18,16 @@ interface TodayScreenProps {
   onLogAsNeeded: (med: Medication) => void
   onUndoAsNeeded: (record: DoseRecord) => void
   onGoToMeds: () => void
-  /** Whether reminders are active, so a snooze will actually re-fire. */
-  canSnooze: boolean
 }
 
-/** A dose slot is "pending" when it still needs the user's attention today. */
 function isPending(status: DoseSlot['status']): boolean {
   return status === 'due' || status === 'upcoming' || status === 'missed'
-}
-
-const STATUS_LABEL: Record<DoseSlot['status'], string> = {
-  upcoming: 'Upcoming',
-  due: 'Due now',
-  taken: 'Taken',
-  skipped: 'Skipped',
-  missed: 'Missed',
 }
 
 export function TodayScreen({
   data,
   now,
+  canSnooze,
   onTake,
   onSkip,
   onUndo,
@@ -42,11 +36,9 @@ export function TodayScreen({
   onLogAsNeeded,
   onUndoAsNeeded,
   onGoToMeds,
-  canSnooze,
 }: TodayScreenProps) {
   const slots = useMemo(() => buildDaySlots(data, now, now), [data, now])
   const pendingSlots = useMemo(() => slots.filter((s) => isPending(s.status)), [slots])
-
   const asNeededMeds = useMemo(
     () => sortMedications(data.medications.filter((m) => m.active && m.scheduleKind === 'asNeeded')),
     [data.medications],
@@ -66,97 +58,55 @@ export function TodayScreen({
   }, [data.records, today])
 
   const takenCount = slots.filter((s) => s.status === 'taken').length
-  const dateLabel = now.toLocaleDateString([], {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  })
-
   const hasActiveMeds = data.medications.some((m) => m.active)
+  const isEmpty = slots.length === 0 && asNeededMeds.length === 0
 
   return (
     <section className="screen">
-      <header className="screen__header">
-        <div>
-          <p className="screen__eyebrow">{dateLabel}</p>
-          <h1>Today</h1>
-        </div>
-        {slots.length > 0 && (
-          <div className="progress-pill" aria-label={`${takenCount} of ${slots.length} doses taken`}>
-            {takenCount}/{slots.length} taken
-          </div>
-        )}
-      </header>
+      <ScreenHeader
+        eyebrow={formatLongDayLabel(now)}
+        title="Today"
+        trailing={
+          slots.length > 0 ? (
+            <div className="progress-pill" aria-label={`${takenCount} of ${slots.length} doses taken`}>
+              {takenCount}/{slots.length} taken
+            </div>
+          ) : undefined
+        }
+      />
 
       {pendingSlots.length > 0 && (
-        <button
-          type="button"
-          className="btn btn--ghost mark-all"
-          onClick={() => onTakeAll(pendingSlots)}
-        >
+        <Button variant="ghost" className="mark-all" onClick={() => onTakeAll(pendingSlots)}>
           <CheckCheck size={18} /> Mark all taken ({pendingSlots.length})
-        </button>
+        </Button>
       )}
 
-      {slots.length === 0 && asNeededMeds.length === 0 ? (
-        <div className="empty">
-          <Pill size={40} aria-hidden />
-          {hasActiveMeds ? (
-            <p>No doses scheduled for today.</p>
-          ) : (
-            <>
-              <p>You haven't added any medications yet.</p>
-              <button type="button" className="btn btn--primary" onClick={onGoToMeds}>
-                Add your first medication
-              </button>
-            </>
-          )}
-        </div>
+      {isEmpty ? (
+        <EmptyState
+          icon={Pill}
+          message={
+            hasActiveMeds ? (
+              'No doses scheduled for today.'
+            ) : (
+              <>
+                <p>You haven't added any medications yet.</p>
+              </>
+            )
+          }
+          action={hasActiveMeds ? undefined : { label: 'Add your first medication', onClick: onGoToMeds }}
+        />
       ) : (
         <ul className="dose-list">
           {slots.map((slot) => (
-            <li key={slot.record?.id ?? `${slot.medication.id}-${slot.time}`} className={`dose-card is-${slot.status}`}>
-              <div className="dose-card__time">
-                <Clock size={16} aria-hidden />
-                {formatTime(slot.time)}
-              </div>
-              <div className="dose-card__body">
-                <div className="dose-card__name">{slot.medication.name}</div>
-                {slot.medication.dosage && (
-                  <div className="dose-card__dose">{slot.medication.dosage}</div>
-                )}
-                {slot.medication.notes && (
-                  <div className="dose-card__notes">{slot.medication.notes}</div>
-                )}
-                <span className={`status-badge status-badge--${slot.status}`}>
-                  {STATUS_LABEL[slot.status]}
-                  {slot.status === 'taken' && slot.record
-                    ? ` · ${new Date(slot.record.recordedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
-                    : ''}
-                </span>
-              </div>
-              <div className="dose-card__actions">
-                {slot.status === 'taken' || slot.status === 'skipped' ? (
-                  <button type="button" className="btn btn--ghost btn--sm" onClick={() => onUndo(slot)}>
-                    <RotateCcw size={16} /> Undo
-                  </button>
-                ) : (
-                  <>
-                    <button type="button" className="btn btn--primary btn--sm" onClick={() => onTake(slot)}>
-                      <Check size={16} /> Take
-                    </button>
-                    <button type="button" className="btn btn--ghost btn--sm" onClick={() => onSkip(slot)}>
-                      <SkipForward size={16} /> Skip
-                    </button>
-                    {canSnooze && (slot.status === 'due' || slot.status === 'missed') && (
-                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => onSnooze(slot)}>
-                        <AlarmClock size={16} /> Snooze
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            </li>
+            <DoseCard
+              key={slot.record?.id ?? `${slot.medication.id}-${slot.time}`}
+              slot={slot}
+              canSnooze={canSnooze}
+              onTake={onTake}
+              onSkip={onSkip}
+              onUndo={onUndo}
+              onSnooze={onSnooze}
+            />
           ))}
         </ul>
       )}
@@ -170,17 +120,12 @@ export function TodayScreen({
               return (
                 <li key={med.id} className="dose-card is-asNeeded">
                   <div className="dose-card__body">
-                    <div className="dose-card__name">{med.name}</div>
-                    {med.dosage && <div className="dose-card__dose">{med.dosage}</div>}
-                    {med.notes && <div className="dose-card__notes">{med.notes}</div>}
+                    <MedInfoFromMed med={med} nameClassName="dose-card__name" />
                     {logged.length > 0 && (
                       <div className="as-needed__log">
                         {logged.map((record) => (
                           <span key={record.id} className="as-needed__entry">
-                            {new Date(record.recordedAt).toLocaleTimeString([], {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                            })}
+                            {formatRecordedTime(record.recordedAt)}
                             <button
                               type="button"
                               className="as-needed__undo"
@@ -195,13 +140,9 @@ export function TodayScreen({
                     )}
                   </div>
                   <div className="dose-card__actions">
-                    <button
-                      type="button"
-                      className="btn btn--primary btn--sm"
-                      onClick={() => onLogAsNeeded(med)}
-                    >
+                    <Button variant="primary" size="sm" onClick={() => onLogAsNeeded(med)}>
                       <Plus size={16} /> Log dose
-                    </button>
+                    </Button>
                   </div>
                 </li>
               )

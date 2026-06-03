@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Bell, RefreshCw, X } from 'lucide-react'
+import { Bell, RefreshCw } from 'lucide-react'
 import './App.css'
 import { BottomNav } from './components/BottomNav'
 import type { Tab } from './components/BottomNav'
 import { InstallAppBanner } from './components/InstallAppBanner'
+import { Banner, BannerActionButton } from './components/ui'
 import { useMeds } from './features/meds/useMeds'
 import type { MedicationInput } from './features/meds/useMeds'
 import { useReminders } from './features/meds/useReminders'
@@ -13,7 +14,6 @@ import { HistoryScreen } from './features/meds/HistoryScreen'
 import { MedForm } from './features/meds/MedForm'
 import type { Medication } from './features/meds/types'
 import { APP_VERSION } from './version'
-import { resetInstallBannerPreference } from './components/InstallAppBanner'
 
 type FormState = { mode: 'add' } | { mode: 'edit'; med: Medication } | null
 
@@ -28,7 +28,6 @@ export default function App() {
   const meds = useMeds()
   const { permission, requestPermission, snooze } = useReminders(meds.data)
 
-  // Re-evaluate dose statuses as time passes.
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 30_000)
     return () => window.clearInterval(id)
@@ -70,72 +69,56 @@ export default function App() {
     (permission === 'default' || permission === 'denied') &&
     meds.data.medications.some((m) => m.active)
 
+  const openAddForm = () => setForm({ mode: 'add' })
+
   return (
     <div className="app">
       <main className="app__main">
         <InstallAppBanner />
 
         {showReminderBanner && (
-          <div className="banner">
-            <Bell size={18} aria-hidden />
-            <div className="banner__text">
-              {permission === 'denied'
-                ? 'Reminders are blocked. Enable notifications for this app in your browser settings.'
-                : 'Get a reminder 15 minutes before each dose.'}
-            </div>
-            {permission === 'default' && (
-              <button type="button" className="btn btn--primary btn--sm" onClick={requestPermission}>
-                Enable
-              </button>
-            )}
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={() => setBannerDismissed(true)}
-              aria-label="Dismiss"
-            >
-              <X size={18} />
-            </button>
-          </div>
+          <Banner
+            icon={<Bell size={18} aria-hidden />}
+            onDismiss={() => setBannerDismissed(true)}
+            dismissLabel="Dismiss reminder prompt"
+            action={
+              permission === 'default' ? (
+                <BannerActionButton onClick={requestPermission}>Enable</BannerActionButton>
+              ) : undefined
+            }
+          >
+            {permission === 'denied'
+              ? 'Reminders are blocked. Enable notifications for this app in your browser settings.'
+              : 'Get a reminder 15 minutes before each dose.'}
+          </Banner>
         )}
 
         {updateReady && applyUpdate && (
-          <div className="banner">
-            <RefreshCw size={18} aria-hidden />
-            <div className="banner__text">A new version is ready. Update now to get the latest fixes.</div>
-            <button type="button" className="btn btn--primary btn--sm" onClick={() => void applyUpdate(true)}>
-              Update
-            </button>
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={() => setUpdateReady(false)}
-              aria-label="Dismiss update prompt"
-            >
-              <X size={18} />
-            </button>
-          </div>
+          <Banner
+            icon={<RefreshCw size={18} aria-hidden />}
+            onDismiss={() => setUpdateReady(false)}
+            dismissLabel="Dismiss update prompt"
+            action={<BannerActionButton onClick={() => void applyUpdate(true)}>Update</BannerActionButton>}
+          >
+            A new version is ready. Update now to get the latest fixes.
+          </Banner>
         )}
 
         {tab === 'today' && (
           <TodayScreen
             data={meds.data}
             now={now}
-            onTake={(slot) => meds.recordDose(slot.medication.id, slot.date, slot.time, 'taken')}
-            onSkip={(slot) => meds.recordDose(slot.medication.id, slot.date, slot.time, 'skipped')}
-            onUndo={(slot) => meds.clearDose(slot.medication.id, slot.date, slot.time)}
-            onTakeAll={(slots) =>
-              slots.forEach((slot) =>
-                meds.recordDose(slot.medication.id, slot.date, slot.time, 'taken'),
-              )
-            }
-            onSnooze={(slot) => snooze(slot)}
             canSnooze={permission === 'granted'}
+            onTake={(slot) => meds.recordSlot(slot, 'taken')}
+            onSkip={(slot) => meds.recordSlot(slot, 'skipped')}
+            onUndo={meds.clearSlot}
+            onTakeAll={meds.takeAllSlots}
+            onSnooze={snooze}
             onLogAsNeeded={(med) => meds.logAsNeeded(med.id)}
-            onUndoAsNeeded={(record) => meds.clearDose(record.medId, record.date, record.time)}
+            onUndoAsNeeded={meds.clearAsNeededRecord}
             onGoToMeds={() => {
               setTab('meds')
-              setForm({ mode: 'add' })
+              openAddForm()
             }}
           />
         )}
@@ -143,15 +126,13 @@ export default function App() {
         {tab === 'meds' && (
           <MedsScreen
             data={meds.data}
-            onAdd={() => setForm({ mode: 'add' })}
+            onAdd={openAddForm}
             onEdit={(med) => setForm({ mode: 'edit', med })}
             onToggleActive={(med, active) => meds.setActive(med.id, active)}
           />
         )}
 
-        {tab === 'history' && (
-          <HistoryScreen data={meds.data} onResetInstallPrompt={resetInstallBannerPreference} />
-        )}
+        {tab === 'history' && <HistoryScreen data={meds.data} />}
 
         <p className="app__version">My Meds v{APP_VERSION}</p>
       </main>

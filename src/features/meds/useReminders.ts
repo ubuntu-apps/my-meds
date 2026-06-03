@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AppData, DoseSlot, ReminderAlert } from './types'
-import { buildDaySlots, dateKey, formatTime, REMINDER_LEAD_MINUTES, slotId } from './schedule'
+import { buildDaySlots, dateKey, slotId } from './schedule'
 import { triggerReminderAlert } from './reminderAlert'
+import { NOTIFIED_KEY, SNOOZE_KEY } from './constants'
+import { buildLeadReminder, buildSnoozeReminder } from './reminderCopy'
 
-const NOTIFIED_KEY = 'my-meds:notified:v1'
-const SNOOZE_KEY = 'my-meds:snooze:v1'
 const TICK_MS = 30_000
 /** How long after the reminder moment we still allow firing (covers a closed/asleep tab). */
 const REMINDER_WINDOW_MS = 10 * 60_000
@@ -14,9 +14,7 @@ export const SNOOZE_MINUTES = 15
 type NotifiedState = { date: string; ids: string[] }
 
 interface SnoozeEntry {
-  /** slotId of the snoozed dose. */
   id: string
-  /** Epoch ms when the snoozed reminder should fire. */
   remindAt: number
   title: string
   body: string
@@ -72,25 +70,23 @@ function currentPermission(): PermissionState {
   return Notification.permission
 }
 
-async function showReminder(
-  title: string,
-  body: string,
-  alert: ReminderAlert,
-  name: string,
-  time: string,
-): Promise<void> {
-  triggerReminderAlert(alert, name, time)
-  // Prefer the service worker registration so notifications behave correctly
-  // on mobile / when the app is installed; fall back to a page notification.
+async function showReminder(copy: {
+  title: string
+  body: string
+  alert: ReminderAlert
+  name: string
+  time: string
+}): Promise<void> {
+  triggerReminderAlert(copy.alert, copy.name, copy.time)
   try {
     if ('serviceWorker' in navigator) {
       const reg = await navigator.serviceWorker.getRegistration()
       if (reg) {
-        await reg.showNotification(title, {
-          body,
+        await reg.showNotification(copy.title, {
+          body: copy.body,
           icon: '/my-meds/icons/meds-192.png',
           badge: '/my-meds/icons/meds-192.png',
-          tag: title + body,
+          tag: copy.title + copy.body,
         })
         return
       }
@@ -98,7 +94,7 @@ async function showReminder(
   } catch {
     // fall through to the basic notification
   }
-  new Notification(title, { body })
+  new Notification(copy.title, { body: copy.body })
 }
 
 export function useReminders(data: AppData) {
@@ -112,16 +108,11 @@ export function useReminders(data: AppData) {
 
   const snooze = useCallback((slot: DoseSlot, minutes: number = SNOOZE_MINUTES) => {
     const id = slotId(slot.medication.id, slot.date, slot.time)
-    const dose = slot.medication.dosage ? ` (${slot.medication.dosage})` : ''
-    const timeLabel = formatTime(slot.time)
+    const copy = buildSnoozeReminder(slot)
     const entry: SnoozeEntry = {
       id,
       remindAt: Date.now() + minutes * 60_000,
-      title: `${slot.medication.name} reminder`,
-      body: `Snoozed — take${dose} when you can.`,
-      alert: slot.medication.reminderAlert,
-      name: slot.medication.name,
-      time: timeLabel,
+      ...copy,
     }
     const entries = loadSnoozes().filter((e) => e.id !== id)
     entries.push(entry)
@@ -142,20 +133,12 @@ export function useReminders(data: AppData) {
       let changed = false
 
       for (const slot of slots) {
-        if (slot.status !== 'upcoming') continue // already taken/skipped/past
+        if (slot.status !== 'upcoming') continue
         const id = slotId(slot.medication.id, slot.date, slot.time)
         if (notified.has(id)) continue
         const sinceReminder = now.getTime() - slot.reminderAt.getTime()
         if (sinceReminder >= 0 && sinceReminder <= REMINDER_WINDOW_MS) {
-          const dose = slot.medication.dosage ? ` (${slot.medication.dosage})` : ''
-          const timeLabel = formatTime(slot.time)
-          void showReminder(
-            `${slot.medication.name} in ${REMINDER_LEAD_MINUTES} min`,
-            `Take at ${timeLabel}${dose}.`,
-            slot.medication.reminderAlert,
-            slot.medication.name,
-            timeLabel,
-          )
+          void showReminder(buildLeadReminder(slot))
           notified.add(id)
           changed = true
         }
@@ -163,22 +146,17 @@ export function useReminders(data: AppData) {
 
       if (changed) saveNotified(today, notified)
 
-      // Fire any snoozed reminders whose delay has elapsed.
       const snoozes = loadSnoozes()
       if (snoozes.length > 0) {
         const remaining: SnoozeEntry[] = []
         let snoozeChanged = false
         for (const entry of snoozes) {
-          // Drop silently if the dose was taken/skipped while snoozed.
           if (data.records[entry.id]) {
             snoozeChanged = true
             continue
           }
           if (now.getTime() >= entry.remindAt) {
-            const alert = entry.alert ?? 'speech'
-            const name = entry.name ?? entry.title.replace(/ reminder$/i, '')
-            const time = entry.time ?? ''
-            void showReminder(entry.title, entry.body, alert, name, time)
+            void showReminder(entry)
             snoozeChanged = true
           } else {
             remaining.push(entry)

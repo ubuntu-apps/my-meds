@@ -288,6 +288,10 @@
 }
 
 /* ---------- History ---------- */
+.history__dev {
+  margin-bottom: 12px;
+}
+
 .history__filter {
   display: flex;
   align-items: center;

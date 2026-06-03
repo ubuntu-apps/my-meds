@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Download, X } from 'lucide-react'
+import { Download } from 'lucide-react'
+import { Banner, BannerActionButton } from './ui/Banner'
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>
@@ -30,7 +31,6 @@ export function InstallAppBanner() {
       event.preventDefault()
       setInstallEvent(event as BeforeInstallPromptEvent)
     }
-
     const onInstalled = () => {
       setIsInstalled(true)
       setInstallEvent(null)
@@ -38,7 +38,6 @@ export function InstallAppBanner() {
 
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
     window.addEventListener('appinstalled', onInstalled)
-
     return () => {
       window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt)
       window.removeEventListener('appinstalled', onInstalled)
@@ -64,30 +63,29 @@ export function InstallAppBanner() {
 
   const showInstallButton = Boolean(installEvent) && !ios
   const showIosInstructions = ios && !installEvent
-
   if (!showInstallButton && !showIosInstructions) return null
 
   return (
-    <section className="banner banner--install" aria-label="Install My Meds app">
-      <Download size={18} aria-hidden />
-      <div className="banner__text">
-        {showInstallButton ? (
-          <>
-            <strong>Install My Meds</strong> for a home-screen app experience.
-          </>
-        ) : (
-          <>On iPhone: tap Share, then Add to Home Screen.</>
-        )}
-      </div>
-      {showInstallButton && (
-        <button type="button" className="btn btn--primary btn--sm" onClick={onInstall}>
-          Install app
-        </button>
+    <Banner
+      className="banner--install"
+      icon={<Download size={18} aria-hidden />}
+      aria-label="Install My Meds app"
+      onDismiss={onDismiss}
+      dismissLabel="Dismiss install prompt"
+      action={
+        showInstallButton ? (
+          <BannerActionButton onClick={onInstall}>Install app</BannerActionButton>
+        ) : undefined
+      }
+    >
+      {showInstallButton ? (
+        <>
+          <strong>Install My Meds</strong> for a home-screen app experience.
+        </>
+      ) : (
+        <>On iPhone: tap Share, then Add to Home Screen.</>
       )}
-      <button type="button" className="icon-btn" onClick={onDismiss} aria-label="Dismiss install prompt">
-        <X size={18} />
-      </button>
-    </section>
+    </Banner>
   )
 }
 
