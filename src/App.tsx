@@ -26,7 +26,7 @@ export default function App() {
   const [applyUpdate, setApplyUpdate] = useState<((reloadPage?: boolean) => Promise<void>) | null>(null)
 
   const meds = useMeds()
-  const { permission, requestPermission, snooze } = useReminders(meds.data)
+  const { permission, requestPermission, snooze, isNative } = useReminders(meds.data)
 
   // Re-evaluate dose statuses as time passes.
   useEffect(() => {
@@ -81,7 +81,9 @@ export default function App() {
             <div className="banner__text">
               {permission === 'denied'
                 ? 'Reminders are blocked. Enable notifications for this app in your browser settings.'
-                : 'Get a reminder 15 minutes before each dose.'}
+                : isNative
+                  ? 'Get a reminder 15 minutes before each dose, even when the app is closed.'
+                  : 'Get a reminder 15 minutes before each dose.'}
             </div>
             {permission === 'default' && (
               <button type="button" className="btn btn--primary btn--sm" onClick={requestPermission}>
