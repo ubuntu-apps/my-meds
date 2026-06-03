@@ -1,6 +1,8 @@
-import { Plus, Pencil, Pill, CalendarDays } from 'lucide-react'
+import { Plus, Pill } from 'lucide-react'
+import { Button, EmptyState, ScreenHeader } from '../../components/ui'
 import type { AppData, Medication } from './types'
-import { formatDays, formatSchedule, formatTime, sortMedications } from './schedule'
+import { sortMedications } from './schedule'
+import { MedCard } from './components/MedCard'
 
 interface MedsScreenProps {
   data: AppData
@@ -14,75 +16,26 @@ export function MedsScreen({ data, onAdd, onEdit, onToggleActive }: MedsScreenPr
 
   return (
     <section className="screen">
-      <header className="screen__header">
-        <div>
-          <p className="screen__eyebrow">Your list</p>
-          <h1>Medications</h1>
-        </div>
-        <button type="button" className="btn btn--primary" onClick={onAdd}>
-          <Plus size={18} /> Add
-        </button>
-      </header>
+      <ScreenHeader
+        eyebrow="Your list"
+        title="Medications"
+        trailing={
+          <Button variant="primary" onClick={onAdd}>
+            <Plus size={18} /> Add
+          </Button>
+        }
+      />
 
       {meds.length === 0 ? (
-        <div className="empty">
-          <Pill size={40} aria-hidden />
-          <p>No medications yet. Add one to start tracking.</p>
-          <button type="button" className="btn btn--primary" onClick={onAdd}>
-            Add medication
-          </button>
-        </div>
+        <EmptyState
+          icon={Pill}
+          message="No medications yet. Add one to start tracking."
+          action={{ label: 'Add medication', onClick: onAdd }}
+        />
       ) : (
         <ul className="med-list">
           {meds.map((med) => (
-            <li key={med.id} className={`med-card${med.active ? '' : ' is-inactive'}`}>
-              <div className="med-card__main">
-                <div className="med-card__name">{med.name}</div>
-                {med.dosage && <div className="med-card__dose">{med.dosage}</div>}
-                {med.scheduleKind === 'fixed' ? (
-                  <div className="med-card__times">
-                    {med.times.map((t) => (
-                      <span key={t} className="time-chip">
-                        {formatTime(t)}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="med-card__times">
-                    <span className="time-chip">{formatSchedule(med)}</span>
-                  </div>
-                )}
-                {med.scheduleKind !== 'asNeeded' && (
-                  <div className="med-card__days">
-                    <CalendarDays size={14} aria-hidden />
-                    {formatDays(med.days)}
-                    <span className="time-chip">
-                      {med.reminderAlert === 'sound' ? 'Sound reminder' : 'Speech reminder'}
-                    </span>
-                  </div>
-                )}
-                {med.notes && <div className="med-card__notes">{med.notes}</div>}
-              </div>
-              <div className="med-card__side">
-                <button
-                  type="button"
-                  className="icon-btn"
-                  onClick={() => onEdit(med)}
-                  aria-label={`Edit ${med.name}`}
-                >
-                  <Pencil size={18} />
-                </button>
-                <label className="switch" title={med.active ? 'Active' : 'Paused'}>
-                  <input
-                    type="checkbox"
-                    checked={med.active}
-                    onChange={(e) => onToggleActive(med, e.target.checked)}
-                  />
-                  <span className="switch__track" aria-hidden />
-                  <span className="switch__label">{med.active ? 'On' : 'Off'}</span>
-                </label>
-              </div>
-            </li>
+            <MedCard key={med.id} med={med} onEdit={onEdit} onToggleActive={onToggleActive} />
           ))}
         </ul>
       )}

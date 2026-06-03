@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { AppData, DoseStatus, Medication, ReminderAlert, ScheduleKind } from './types'
+import type { AppData, DoseRecord, DoseSlot, DoseStatus, Medication, ReminderAlert, ScheduleKind } from './types'
 import { createId, loadData, saveData } from './storage'
 import { dateKey, normalizeDays, normalizeIntervalHours, normalizeTimes, slotId } from './schedule'
 
@@ -142,6 +142,34 @@ export function useMeds() {
     recordDose(medId, date, time, 'taken')
   }, [recordDose])
 
+  const recordSlot = useCallback(
+    (slot: DoseSlot, status: DoseStatus) => {
+      recordDose(slot.medication.id, slot.date, slot.time, status)
+    },
+    [recordDose],
+  )
+
+  const clearSlot = useCallback(
+    (slot: DoseSlot) => {
+      clearDose(slot.medication.id, slot.date, slot.time)
+    },
+    [clearDose],
+  )
+
+  const takeAllSlots = useCallback(
+    (slots: DoseSlot[]) => {
+      slots.forEach((slot) => recordSlot(slot, 'taken'))
+    },
+    [recordSlot],
+  )
+
+  const clearAsNeededRecord = useCallback(
+    (record: DoseRecord) => {
+      clearDose(record.medId, record.date, record.time)
+    },
+    [clearDose],
+  )
+
   return {
     data,
     addMedication,
@@ -151,7 +179,9 @@ export function useMeds() {
     recordDose,
     clearDose,
     logAsNeeded,
+    recordSlot,
+    clearSlot,
+    takeAllSlots,
+    clearAsNeededRecord,
   }
 }
-
-export type UseMeds = ReturnType<typeof useMeds>
